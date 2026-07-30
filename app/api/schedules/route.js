@@ -3,27 +3,35 @@ import { isTeableConfigured, listSchedulesByYear, syncSchedulesForYear } from ".
 import { normalizeYear } from "../../../lib/field-map.js";
 
 export async function GET(request) {
-  const { searchParams } = new URL(request.url);
-  const year = normalizeYear(searchParams.get("year") || process.env.HOTO_DEFAULT_YEAR || "1448H");
+  try {
+    const { searchParams } = new URL(request.url);
+    const year = normalizeYear(searchParams.get("year") || process.env.HOTO_DEFAULT_YEAR || "1448H");
 
-  if (!isTeableConfigured()) {
-    return NextResponse.json({ records: [], year, source: "local-demo" });
+    if (!isTeableConfigured()) {
+      return NextResponse.json({ records: [], year, source: "local-demo" });
+    }
+
+    const records = await listSchedulesByYear(year);
+    return NextResponse.json({ records, year, source: "teable" });
+  } catch (error) {
+    return NextResponse.json({ error: error.message || "Could not load schedules." }, { status: 500 });
   }
-
-  const records = await listSchedulesByYear(year);
-  return NextResponse.json({ records, year, source: "teable" });
 }
 
 export async function PUT(request) {
-  const { searchParams } = new URL(request.url);
-  const year = normalizeYear(searchParams.get("year") || process.env.HOTO_DEFAULT_YEAR || "1448H");
-  const body = await request.json();
-  const records = Array.isArray(body.records) ? body.records : [];
+  try {
+    const { searchParams } = new URL(request.url);
+    const year = normalizeYear(searchParams.get("year") || process.env.HOTO_DEFAULT_YEAR || "1448H");
+    const body = await request.json();
+    const records = Array.isArray(body.records) ? body.records : [];
 
-  if (!isTeableConfigured()) {
-    return NextResponse.json({ error: "Teable is not configured." }, { status: 503 });
+    if (!isTeableConfigured()) {
+      return NextResponse.json({ error: "Teable is not configured." }, { status: 503 });
+    }
+
+    const saved = await syncSchedulesForYear(year, records);
+    return NextResponse.json({ records: saved, year, source: "teable" });
+  } catch (error) {
+    return NextResponse.json({ error: error.message || "Could not save schedules." }, { status: 500 });
   }
-
-  const saved = await syncSchedulesForYear(year, records);
-  return NextResponse.json({ records: saved, year, source: "teable" });
 }
