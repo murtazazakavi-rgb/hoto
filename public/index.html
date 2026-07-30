@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Imae Fatema Annual HOTO Schedule</title>
+    <link rel="stylesheet" href="assets/da-design-system.css" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="HOTO navigation">
+        <a class="brand" href="#/dashboard/hoto" aria-label="HOTO home">
+          <img src="assets/da-motif.svg" alt="" />
+          <span>
+            <strong>HOTO</strong>
+            <small>Imae Fatema</small>
+          </span>
+        </a>
+        <nav class="side-nav">
+          <a class="nav-link active" href="#/dashboard/hoto" data-route="dashboard">Musaedah Board</a>
+          <a class="nav-link" href="imae-fatema.html">Imae Fatema View</a>
+        </nav>
+        <div class="sidebar-note">
+          <span class="kicker">Simple v1</span>
+          <p>All HOTO rows are visible. Musaedaat can update date, time and meeting links directly.</p>
+        </div>
+        <div class="super-admin-panel">
+          <button class="btn btn-secondary btn-block" type="button" id="unlockSuperAdmin">Super Admin</button>
+          <div class="super-admin-controls" id="superAdminControls" hidden>
+            <span class="kicker">Super Admin Controls</span>
+            <button class="btn btn-secondary btn-block" type="button" id="openImportYear">Import New Year</button>
+            <button class="btn btn-secondary btn-block" type="button" id="scheduleJamiatSuperAdmin">Schedule Jamiat</button>
+            <button class="btn btn-secondary btn-block" type="button" id="resetDemo">Reset Data</button>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <section id="dashboard-view" class="view" aria-labelledby="dashboard-title">
+          <header class="page-header">
+            <div>
+              <p class="kicker">Annual HOTO Schedule</p>
+              <h1 id="dashboard-title">HOTO Schedule</h1>
+              <p class="lede">Scroll every Jamiat, update schedules, and send WhatsApp-ready joining details for <strong id="activeYearLabel">1448H</strong>.</p>
+            </div>
+            <div class="header-actions">
+              <label class="field year-field">
+                <span>HOTO Year</span>
+                <select id="yearSelect"></select>
+              </label>
+              <button class="btn btn-secondary" type="button" id="copyParticipantLink">Copy Imae Fatema Link</button>
+              <a class="btn btn-secondary" id="openParticipantLink" href="imae-fatema.html" target="_blank" rel="noreferrer">Open Imae Fatema View</a>
+              <button class="btn btn-primary" type="button" id="newRowBtn">Add HOTO</button>
+            </div>
+          </header>
+
+          <section class="metric-grid" aria-label="Schedule summary">
+            <article class="metric-card">
+              <span>Total HOTO</span>
+              <strong id="metricTotal">0</strong>
+            </article>
+            <article class="metric-card">
+              <span>Scheduled</span>
+              <strong id="metricScheduled">0</strong>
+            </article>
+            <article class="metric-card">
+              <span>Today</span>
+              <strong id="metricToday">0</strong>
+            </article>
+            <article class="metric-card">
+              <span>Links Missing</span>
+              <strong id="metricLinks">0</strong>
+            </article>
+          </section>
+
+          <section class="panel musaedah-panel" aria-label="Musaedah meeting workload">
+            <div class="table-toolbar">
+              <div>
+                <span class="kicker">Musaedah Workload</span>
+                <h2>Meetings by Musaedah</h2>
+              </div>
+              <div class="header-actions">
+                <button class="btn btn-secondary" type="button" id="clearMusaedahStatsFilter">Show All</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="musaedah-stats-table">
+                <thead>
+                  <tr>
+                    <th>Musaedah</th>
+                    <th>Total HOTO</th>
+                    <th>Remaining</th>
+                    <th>Draft</th>
+                    <th>Scheduled</th>
+                    <th>Completed</th>
+                    <th>Cancelled</th>
+                    <th>Links Missing</th>
+                    <th>Completion</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="musaedahStatsRows"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <section class="panel filters-panel" aria-label="Schedule filters">
+            <label class="field">
+              <span>All Jamiats</span>
+              <select id="jamiatFilter"></select>
+            </label>
+            <label class="field">
+              <span>Jamaat / Mauze</span>
+              <input id="mauzeFilter" type="search" placeholder="Search Mauze" />
+            </label>
+            <label class="field">
+              <span>Musaedah</span>
+              <select id="musaedahFilter"></select>
+            </label>
+            <label class="field">
+              <span>Date</span>
+              <input id="dateFilter" type="date" />
+            </label>
+            <label class="field">
+              <span>Status</span>
+              <select id="statusFilter">
+                <option value="">All statuses</option>
+                <option>Draft</option>
+                <option>Scheduled</option>
+                <option>Completed</option>
+                <option>Cancelled</option>
+              </select>
+            </label>
+          </section>
+
+          <section class="panel table-panel">
+            <div class="table-toolbar">
+              <span class="kicker">All Jamiats</span>
+              <span id="resultCount" class="muted"></span>
+            </div>
+            <div class="table-wrap">
+              <table class="schedule-table">
+                <thead>
+                  <tr>
+                    <th>Sr. No.</th>
+                    <th>Jamiat</th>
+                    <th>Jamaat / Mauze</th>
+                    <th>Being Handed By Zawjat of</th>
+                    <th>Being Taken By Zawjat of</th>
+                    <th>Musaedah</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Google Meet Link</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="scheduleRows"></tbody>
+              </table>
+            </div>
+            <div id="emptyTable" class="empty-state" hidden>
+              <img src="assets/da-motif.svg" alt="" />
+              <strong>No meetings found for the current filters.</strong>
+              <span>Clear filters to view all HOTO records.</span>
+              <button class="btn btn-secondary" type="button" id="clearEmptyFilters">Clear Filters</button>
+            </div>
+          </section>
+        </section>
+
+        <section id="participant-view" class="view" aria-labelledby="participant-title" hidden>
+          <div class="participant-layout">
+            <div class="phone-frame">
+              <div class="phone-screen">
+                <header class="mobile-header">
+                  <img src="assets/da-motif.svg" alt="" />
+                  <div>
+                    <p class="kicker">Schedule</p>
+                    <h1 id="participant-title">Imae Fatema HOTO</h1>
+                  </div>
+                </header>
+                <label class="mobile-search">
+                  <span>Search</span>
+                  <input id="participantSearch" type="search" placeholder="Jamiat, Mauze or name" />
+                </label>
+                <div id="participantCards" class="participant-cards"></div>
+              </div>
+            </div>
+            <aside class="preview-notes">
+              <p class="kicker">Participant page</p>
+              <h2>Simple, readable and WhatsApp-friendly.</h2>
+              <p>Every Imae Fatema can scroll the same scheduled HOTO list, see the joining link, and read the latest instructions.</p>
+            </aside>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
+    <div class="drawer-backdrop" id="autoScheduleBackdrop" hidden></div>
+    <div class="drawer-backdrop" id="importYearBackdrop" hidden></div>
+    <aside class="drawer" id="editDrawer" aria-labelledby="drawerTitle" aria-hidden="true">
+      <form id="scheduleForm">
+        <div class="drawer-head">
+          <div>
+            <p class="kicker" id="drawerMode">Edit Schedule</p>
+            <h2 id="drawerTitle">Edit Schedule</h2>
+          </div>
+          <button class="icon-btn" type="button" id="closeDrawer" aria-label="Close drawer">×</button>
+        </div>
+
+        <input type="hidden" id="recordId" />
+        <div class="form-grid">
+          <label class="field">
+            <span>Jamiat</span>
+            <input id="jamiatInput" required />
+          </label>
+          <label class="field">
+            <span>Jamaat / Mauze</span>
+            <input id="mauzeInput" required />
+          </label>
+          <label class="field">
+            <span>Being Handed By Zawjat of</span>
+            <input id="handoverInput" required />
+          </label>
+          <label class="field">
+            <span>Being Taken By Zawjat of</span>
+            <input id="takeoverInput" required />
+          </label>
+          <label class="field">
+            <span>Handing Amil</span>
+            <input id="handoverAmilInput" />
+          </label>
+          <label class="field">
+            <span>Taking Amil</span>
+            <input id="takeoverAmilInput" />
+          </label>
+          <label class="field">
+            <span>Musaedah</span>
+            <input id="musaedahInput" required />
+          </label>
+          <label class="field">
+            <span>Date</span>
+            <input id="dateInput" type="date" />
+          </label>
+          <label class="field">
+            <span>Start Time</span>
+            <input id="startInput" type="time" />
+          </label>
+          <label class="field">
+            <span>End Time</span>
+            <input id="endInput" type="time" />
+          </label>
+          <label class="field">
+            <span>Time Zone</span>
+            <input id="timezoneInput" required />
+          </label>
+          <label class="field">
+            <span>Status</span>
+            <select id="statusInput">
+              <option>Draft</option>
+              <option>Scheduled</option>
+              <option>Completed</option>
+              <option>Cancelled</option>
+            </select>
+          </label>
+          <label class="field wide">
+            <span>Google Meet Link</span>
+            <input id="linkInput" type="url" placeholder="https://meet.google.com/..." />
+          </label>
+          <label class="field wide">
+            <span>Instructions</span>
+            <textarea id="instructionsInput" rows="5"></textarea>
+          </label>
+        </div>
+
+        <div class="message-preview">
+          <p class="kicker">Default WhatsApp Message</p>
+          <pre id="messagePreview"></pre>
+        </div>
+        <div class="conflict-warning" id="conflictWarning" hidden></div>
+
+        <div class="drawer-actions">
+          <button class="btn btn-secondary" type="button" id="copyFromDrawer">Copy Message</button>
+          <button class="btn btn-secondary" type="button" id="whatsappFromDrawer">Open WhatsApp</button>
+          <button class="btn btn-secondary" type="button" id="calendarFromDrawer">Add Calendar</button>
+          <button class="btn btn-primary" type="submit">Save Changes</button>
+        </div>
+      </form>
+    </aside>
+
+    <section class="dialog" id="autoScheduleDialog" aria-labelledby="autoScheduleTitle" aria-hidden="true">
+      <form id="autoScheduleForm">
+        <div class="drawer-head">
+          <div>
+            <p class="kicker">Automatic Scheduling</p>
+            <h2 id="autoScheduleTitle">Auto Schedule Meetings</h2>
+          </div>
+          <button class="icon-btn" type="button" id="closeAutoSchedule" aria-label="Close automatic scheduling">×</button>
+        </div>
+        <p class="dialog-copy" id="autoScheduleCopy">This will schedule only the selected Musaedah and selected Jamiat. Other Jamiats will not be touched.</p>
+        <div class="form-grid">
+          <label class="field wide">
+            <span>Musaedah</span>
+            <input id="autoMusaedahName" readonly />
+          </label>
+          <label class="field wide">
+            <span>Jamiat to Schedule</span>
+            <select id="autoJamiatName" required></select>
+          </label>
+          <label class="field">
+            <span>Start Date</span>
+            <input id="autoStartDate" type="date" required />
+          </label>
+          <label class="field">
+            <span>End Date</span>
+            <input id="autoEndDate" type="date" required />
+          </label>
+          <label class="field">
+            <span>Work Starts</span>
+            <input id="autoWorkStart" type="time" value="10:00" required />
+          </label>
+          <label class="field">
+            <span>Work Ends</span>
+            <input id="autoWorkEnd" type="time" value="17:00" required />
+          </label>
+          <label class="field">
+            <span>Meeting Duration</span>
+            <select id="autoDuration">
+              <option value="20">20 minutes</option>
+              <option value="25">25 minutes</option>
+              <option value="30">30 minutes</option>
+              <option value="40">40 minutes</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Buffer</span>
+            <select id="autoBuffer">
+              <option value="5">5 minutes</option>
+              <option value="10">10 minutes</option>
+              <option value="15">15 minutes</option>
+              <option value="0">No buffer</option>
+            </select>
+          </label>
+        </div>
+        <div class="drawer-actions">
+          <button class="btn btn-secondary" type="button" id="previewAutoSchedule">Preview Count</button>
+          <button class="btn btn-primary" type="submit">Schedule Draft Meetings</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="dialog" id="importYearDialog" aria-labelledby="importYearTitle" aria-hidden="true">
+      <form id="importYearForm">
+        <div class="drawer-head">
+          <div>
+            <p class="kicker">Super Admin</p>
+            <h2 id="importYearTitle">Import New HOTO Year</h2>
+          </div>
+          <button class="icon-btn" type="button" id="closeImportYear" aria-label="Close import year">×</button>
+        </div>
+        <p class="dialog-copy">Upload the new year's Excel file. The imported rows will be saved separately from existing years.</p>
+        <div class="form-grid">
+          <label class="field">
+            <span>Hijri Year</span>
+            <input id="importYearInput" placeholder="1449H" required />
+          </label>
+          <label class="field">
+            <span>Excel File</span>
+            <input id="importFileInput" type="file" accept=".xlsx,.xls,.csv" required />
+          </label>
+        </div>
+        <div class="drawer-actions">
+          <button class="btn btn-secondary" type="button" id="cancelImportYear">Cancel</button>
+          <button class="btn btn-primary" type="submit">Import Year</button>
+        </div>
+      </form>
+    </section>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="hoto-data.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

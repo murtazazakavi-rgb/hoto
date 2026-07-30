@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Imae Fatema HOTO View</title>
+    <link rel="stylesheet" href="assets/da-design-system.css" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="participant-only">
+    <main class="participant-page" aria-labelledby="participant-title">
+      <header class="participant-hero">
+        <img src="assets/da-motif.svg" alt="" />
+        <p class="kicker">Imae Fatema</p>
+        <h1 id="participant-title">HOTO</h1>
+        <p>Hand Over Take Over · <span id="participantYearLabel">1448H</span></p>
+      </header>
+      <section class="participant-search-only">
+        <label class="participant-search-field">
+          <span>Find your HOTO meeting</span>
+          <input id="participantSearch" type="search" placeholder="Search your Mauze or name" autocomplete="off" autofocus />
+        </label>
+        <div id="participantCards" class="participant-cards"></div>
+      </section>
+    </main>
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+    <script src="hoto-data.js"></script>
+    <script src="participant.js"></script>
+  </body>
+</html>
