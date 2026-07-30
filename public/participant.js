@@ -1,9 +1,7 @@
 const LEGACY_STORAGE_KEY = "hoto-simple-schedules-1448h-v1";
 const STORAGE_KEY_PREFIX = "hoto-simple-schedules-";
 const ACTIVE_YEAR_STORAGE_KEY = "hoto-simple-active-year-v1";
-const importedSchedules = Array.isArray(window.HOTO_IMPORTED_SCHEDULES) ? window.HOTO_IMPORTED_SCHEDULES : [];
-const importedMeta = window.HOTO_IMPORTED_META || {};
-const DEFAULT_YEAR = importedMeta.cycle || "1448H";
+const DEFAULT_YEAR = "1448H";
 const activeYear = loadActiveYear();
 let schedules = loadSchedules(activeYear);
 let databaseMode = "local-demo";
@@ -50,7 +48,7 @@ function loadActiveYear() {
 }
 
 function getDefaultSchedulesForYear(year) {
-  return normalizeYear(year) === normalizeYear(DEFAULT_YEAR) ? importedSchedules : [];
+  return [];
 }
 
 function loadSchedules(year = activeYear) {

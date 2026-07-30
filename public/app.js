@@ -4,112 +4,7 @@ const YEARS_STORAGE_KEY = "hoto-simple-years-v1";
 const ACTIVE_YEAR_STORAGE_KEY = "hoto-simple-active-year-v1";
 const SUPER_ADMIN_PASSCODE = "786";
 const ALL_MUSAEDAAT = "__ALL_MUSAEDAAT__";
-const importedSchedules = Array.isArray(window.HOTO_IMPORTED_SCHEDULES) ? window.HOTO_IMPORTED_SCHEDULES : null;
-const importedMeta = window.HOTO_IMPORTED_META || {};
-const DEFAULT_YEAR = importedMeta.cycle || "1448H";
-
-const demoSchedules = [
-  {
-    id: "hoto-001",
-    jamiat: "Mumbai",
-    jamaatMauze: "Bhendi Bazaar",
-    handoverImaeFatemaName: "Fatema ben Abbas",
-    takeoverImaeFatemaName: "Sakina ben Taher",
-    handoverAmilName: "Shk. Abbas bhai",
-    takeoverAmilName: "Shk. Taher bhai",
-    musaedahName: "Musaedah Zainab",
-    scheduledDate: "2026-08-03",
-    startTime: "10:30",
-    endTime: "11:15",
-    timeZone: "Asia/Kolkata",
-    meetingLink: "https://meet.google.com/hoto-mumbai",
-    instructions: "Please join five minutes early with Jamaat documents and current pending notes ready.",
-    status: "Scheduled",
-    lastMessageSentAt: "",
-    lastUpdatedBy: "Demo",
-    lastUpdatedAt: "2026-07-29T09:00:00.000Z"
-  },
-  {
-    id: "hoto-002",
-    jamiat: "Surat",
-    jamaatMauze: "Zampa Bazaar",
-    handoverImaeFatemaName: "Husaina ben Murtaza",
-    takeoverImaeFatemaName: "Tahera ben Yusuf",
-    handoverAmilName: "Shk. Murtaza bhai",
-    takeoverAmilName: "Shk. Yusuf bhai",
-    musaedahName: "Musaedah Sakina",
-    scheduledDate: "2026-08-04",
-    startTime: "12:00",
-    endTime: "12:45",
-    timeZone: "Asia/Kolkata",
-    meetingLink: "",
-    instructions: "Keep handover points short and mark any urgent follow-up separately.",
-    status: "Draft",
-    lastMessageSentAt: "",
-    lastUpdatedBy: "Demo",
-    lastUpdatedAt: "2026-07-29T09:00:00.000Z"
-  },
-  {
-    id: "hoto-003",
-    jamiat: "Kolkata",
-    jamaatMauze: "Park Circus",
-    handoverImaeFatemaName: "Amena ben Idris",
-    takeoverImaeFatemaName: "Maryam ben Mustafa",
-    handoverAmilName: "Shk. Idris bhai",
-    takeoverAmilName: "Shk. Mustafa bhai",
-    musaedahName: "Musaedah Tasneem",
-    scheduledDate: "2026-08-05",
-    startTime: "15:00",
-    endTime: "15:40",
-    timeZone: "Asia/Kolkata",
-    meetingLink: "https://meet.google.com/hoto-kolkata",
-    instructions: "Both Imae Fatema should review household, madrasa and community continuity points before the meeting.",
-    status: "Scheduled",
-    lastMessageSentAt: "",
-    lastUpdatedBy: "Demo",
-    lastUpdatedAt: "2026-07-29T09:00:00.000Z"
-  },
-  {
-    id: "hoto-004",
-    jamiat: "Pune",
-    jamaatMauze: "Camp",
-    handoverImaeFatemaName: "Batul ben Qaidjoher",
-    takeoverImaeFatemaName: "Rukaiya ben Moiz",
-    handoverAmilName: "Shk. Qaidjoher bhai",
-    takeoverAmilName: "Shk. Moiz bhai",
-    musaedahName: "Musaedah Zainab",
-    scheduledDate: "2026-08-06",
-    startTime: "09:45",
-    endTime: "10:25",
-    timeZone: "Asia/Kolkata",
-    meetingLink: "https://meet.google.com/hoto-pune",
-    instructions: "Join from a quiet place. Keep the previous year summary and open action list nearby.",
-    status: "Completed",
-    lastMessageSentAt: "2026-07-29T09:30:00.000Z",
-    lastUpdatedBy: "Demo",
-    lastUpdatedAt: "2026-07-29T09:30:00.000Z"
-  },
-  {
-    id: "hoto-005",
-    jamiat: "Nagpur",
-    jamaatMauze: "Itwari",
-    handoverImaeFatemaName: "Zahra ben Ali",
-    takeoverImaeFatemaName: "Fatema ben Shabbir",
-    handoverAmilName: "Shk. Ali bhai",
-    takeoverAmilName: "Shk. Shabbir bhai",
-    musaedahName: "Musaedah Mariyah",
-    scheduledDate: "2026-08-07",
-    startTime: "16:15",
-    endTime: "17:00",
-    timeZone: "Asia/Kolkata",
-    meetingLink: "https://meet.google.com/hoto-nagpur",
-    instructions: "Please confirm attendance before the meeting and keep questions ready.",
-    status: "Scheduled",
-    lastMessageSentAt: "",
-    lastUpdatedBy: "Demo",
-    lastUpdatedAt: "2026-07-29T09:00:00.000Z"
-  }
-];
+const DEFAULT_YEAR = "1448H";
 
 let activeYear = loadActiveYear();
 let schedules = loadSchedules(activeYear);
@@ -210,9 +105,7 @@ function saveActiveYear(year) {
 }
 
 function getDefaultSchedulesForYear(year) {
-  return normalizeYear(year) === normalizeYear(DEFAULT_YEAR)
-    ? importedSchedules || demoSchedules
-    : [];
+  return [];
 }
 
 function loadSchedules(year = activeYear) {

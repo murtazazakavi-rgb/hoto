@@ -9,13 +9,13 @@ A simplified front-end module for HOTO scheduling using the attached DA Design S
 - Lets Musaedaat edit date, time, meeting link, status and instructions.
 - Shows an Imae Fatema read-only schedule view.
 - Generates a default WhatsApp-ready message for each HOTO row.
-- Saves demo edits in browser `localStorage`.
+- Stores HOTO records in Teable through server-side Next.js API routes.
 
 ## Yearly Data
 
-Use the `HOTO Year` selector to switch between years. Super Admin can unlock the admin controls and choose `Import New Year` to upload the next year's Excel file.
+Use the `HOTO Year` selector to switch between years. Super Admin can unlock the admin controls and choose `Import New Year` to upload the next year's Excel file into Teable.
 
-The static demo stores imported years in that browser's `localStorage`. For every user/device to see new uploaded yearly data automatically, move the same year-based data model to a small backend/database.
+The app does not bundle HOTO schedule data in the deployed code. Teable is the source of truth for shared yearly records.
 
 ## Open Locally
 
@@ -35,9 +35,9 @@ Then visit `http://localhost:3000`.
 
 ## Teable Database
 
-This app is ready to use Teable through Next.js API routes. Create the Teable table fields listed in `TEABLE_SETUP.md`, then copy `.env.example` to `.env.local` and fill the Teable token and table ID.
+This app uses Teable through Next.js API routes. Create the Teable table fields listed in `TEABLE_SETUP.md`, then copy `.env.example` to `.env.local` and fill the Teable token and table ID.
 
-Without Teable environment variables, the app falls back to local demo mode.
+Without Teable environment variables, the app opens with empty local data for development.
 
 ## Next Production Step
 
