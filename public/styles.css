@@ -939,19 +939,87 @@ h3 {
 }
 
 @media (max-width: 720px) {
-  .page-header,
   .sidebar {
+    gap: 14px;
     align-items: stretch;
     flex-direction: column;
+    padding: 14px 12px;
+  }
+
+  .brand {
+    justify-content: center;
+  }
+
+  .brand img {
+    width: 34px;
+    height: 34px;
+  }
+
+  .brand strong {
+    font-size: 25px;
+  }
+
+  .brand small {
+    display: block;
+    font-size: 12px;
+  }
+
+  .side-nav {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+  }
+
+  .nav-link {
+    min-height: 36px;
+    justify-content: center;
+    padding: 0 8px;
+    font-size: 13px;
+    text-align: center;
+  }
+
+  .super-admin-panel {
+    width: 100%;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .super-admin-panel .btn {
+    min-height: 38px;
+  }
+
+  .main {
+    padding: 18px 12px 28px;
+  }
+
+  .page-header {
+    display: grid;
+    gap: 16px;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
   }
 
   .header-actions {
     display: grid;
     grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .header-actions .year-field {
+    grid-column: 1 / -1;
+  }
+
+  .header-actions .btn,
+  .header-actions .field select {
+    min-height: 42px;
+  }
+
+  .header-actions .btn {
+    padding-inline: 10px;
+    font-size: 13px;
   }
 
   .filters-panel,
-  .metric-grid,
   .form-grid,
   .participant-layout,
   .meta-grid,
@@ -959,8 +1027,58 @@ h3 {
     grid-template-columns: 1fr;
   }
 
+  .metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .metric-card {
+    min-height: 96px;
+    padding: 14px;
+    border-radius: var(--radius-md);
+  }
+
+  .metric-card span {
+    font-size: 11px;
+  }
+
+  .metric-card strong {
+    font-size: 31px;
+  }
+
   h1 {
-    font-size: 39px;
+    font-size: 40px;
+  }
+
+  h2 {
+    font-size: 22px;
+  }
+
+  .kicker {
+    font-size: 10px;
+  }
+
+  .lede {
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  .table-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .table-toolbar .header-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .filters-panel {
+    padding: 12px;
+  }
+
+  .schedule-table,
+  .musaedah-stats-table {
+    min-width: 980px;
   }
 
   .drawer {
@@ -971,5 +1089,24 @@ h3 {
     display: grid;
     margin-inline: -18px;
     padding-inline: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .header-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .metric-card {
+    min-height: 84px;
+    padding: 12px;
+  }
+
+  .metric-card strong {
+    font-size: 28px;
+  }
+
+  h1 {
+    font-size: 35px;
   }
 }
