@@ -9,6 +9,7 @@ const DEFAULT_YEAR = "1448H";
 let activeYear = loadActiveYear();
 let schedules = loadSchedules(activeYear);
 let activeRecordId = "";
+let activeMetricFilter = "";
 let databaseMode = "local-demo";
 let serverSyncing = false;
 
@@ -422,14 +423,23 @@ function getFilteredSchedules() {
   const musaedah = $("musaedahFilter").value;
   const date = $("dateFilter").value;
   const status = $("statusFilter").value;
+  const today = new Date().toISOString().slice(0, 10);
 
   return schedules.filter((record) => {
-    return (!jamiat || record.jamiat === jamiat)
+    const matchesMetric = !activeMetricFilter
+      || activeMetricFilter === "all"
+      || (activeMetricFilter === "scheduled" && record.status === "Scheduled")
+      || (activeMetricFilter === "completed" && record.status === "Completed")
+      || (activeMetricFilter === "today" && record.scheduledDate === today)
+      || (activeMetricFilter === "links-missing" && !record.meetingLink);
+
+    return matchesMetric
+      && (!jamiat || record.jamiat === jamiat)
       && (!mauze || record.jamaatMauze.toLowerCase().includes(mauze))
       && (!musaedah || record.musaedahName === musaedah)
       && (!date || record.scheduledDate === date)
       && (!status || record.status === status);
-  });
+  }).sort((a, b) => (Number(a.sourceSrNo) || 99999) - (Number(b.sourceSrNo) || 99999));
 }
 
 function renderFilters() {
@@ -458,8 +468,14 @@ function renderMetrics() {
   const today = new Date().toISOString().slice(0, 10);
   $("metricTotal").textContent = schedules.length;
   $("metricScheduled").textContent = schedules.filter((record) => record.status === "Scheduled").length;
+  $("metricCompleted").textContent = schedules.filter((record) => record.status === "Completed").length;
   $("metricToday").textContent = schedules.filter((record) => record.scheduledDate === today).length;
   $("metricLinks").textContent = schedules.filter((record) => !record.meetingLink).length;
+  document.querySelectorAll("[data-action='metric-filter']").forEach((button) => {
+    const metric = button.dataset.metric || "";
+    button.classList.toggle("active", (activeMetricFilter || "all") === metric);
+    button.setAttribute("aria-pressed", String((activeMetricFilter || "all") === metric));
+  });
 }
 
 function getMusaedahStats() {
@@ -548,10 +564,18 @@ function renderTable() {
       <td>${formatDate(record.scheduledDate)}</td>
       <td>${escapeHtml(formatTimeRange(record))}</td>
       <td>${record.meetingLink ? `<a class="link-pill" href="${escapeAttribute(record.meetingLink)}" target="_blank" rel="noreferrer">${escapeHtml(record.meetingLink)}</a>` : `<span class="muted">Missing</span>`}</td>
-      <td><span class="badge ${record.status.toLowerCase()}">${escapeHtml(record.status)}</span></td>
+      <td>
+        <select class="status-select ${record.status.toLowerCase()}" data-action="change-status" data-id="${record.id}" aria-label="Change status for ${escapeAttribute(record.jamaatMauze)}">
+          <option value="Draft" ${record.status === "Draft" ? "selected" : ""}>Not Scheduled</option>
+          <option value="Scheduled" ${record.status === "Scheduled" ? "selected" : ""}>Scheduled</option>
+          <option value="Completed" ${record.status === "Completed" ? "selected" : ""}>Completed</option>
+          ${record.status === "Cancelled" ? `<option value="Cancelled" selected disabled>Cancelled</option>` : ""}
+        </select>
+      </td>
       <td>
         <div class="row-actions">
           <button class="btn btn-ghost" type="button" data-action="edit" data-id="${record.id}">Edit</button>
+          <button class="btn btn-ghost" type="button" data-action="clear-row-schedule" data-id="${record.id}" ${canClearRecordSchedule(record) ? "" : "disabled"}>Clear Schedule</button>
           <button class="btn btn-ghost" type="button" data-action="calendar" data-id="${record.id}" ${canCreateCalendarEvent(record) ? "" : "disabled"}>Add Calendar</button>
           <button class="btn btn-ghost" type="button" data-action="copy" data-id="${record.id}">Copy Message</button>
           <button class="btn btn-ghost" type="button" data-action="whatsapp" data-id="${record.id}">Open WhatsApp</button>
@@ -614,13 +638,104 @@ function renderAll() {
 }
 
 function clearScheduleFilters() {
+  activeMetricFilter = "";
   $("jamiatFilter").value = "";
   $("mauzeFilter").value = "";
   $("musaedahFilter").value = "";
   $("dateFilter").value = "";
   $("statusFilter").value = "";
+  renderMetrics();
   renderMusaedahStats();
   renderTable();
+}
+
+function applyMetricFilter(metric) {
+  activeMetricFilter = metric === "all" ? "" : metric;
+  $("jamiatFilter").value = "";
+  $("mauzeFilter").value = "";
+  $("musaedahFilter").value = "";
+  $("dateFilter").value = metric === "today" ? new Date().toISOString().slice(0, 10) : "";
+  $("statusFilter").value = metric === "scheduled" ? "Scheduled" : metric === "completed" ? "Completed" : "";
+  renderMetrics();
+  renderMusaedahStats();
+  renderTable();
+}
+
+function canClearRecordSchedule(record) {
+  return Boolean(record.scheduledDate || record.startTime || record.endTime || record.meetingLink || record.status !== "Draft");
+}
+
+function getClearedScheduleRecord(record, updatedBy = "Clear Schedule") {
+  return {
+    ...record,
+    scheduledDate: "",
+    startTime: "",
+    endTime: "",
+    meetingLink: "",
+    status: "Draft",
+    lastMessageSentAt: "",
+    lastUpdatedBy: updatedBy,
+    lastUpdatedAt: new Date().toISOString()
+  };
+}
+
+function clearSingleSchedule(recordId) {
+  const record = schedules.find((item) => item.id === recordId);
+  if (!record || !canClearRecordSchedule(record)) {
+    showToast("This meeting is already not scheduled.");
+    return;
+  }
+
+  const confirmed = window.confirm(`Clear schedule for ${record.jamaatMauze}, ${record.jamiat}? This will remove date, time, meeting link and set it to Not Scheduled.`);
+  if (!confirmed) return;
+
+  schedules = schedules.map((item) => item.id === recordId ? getClearedScheduleRecord(item) : item);
+  saveSchedules();
+  renderAll();
+  showToast(`Schedule cleared for ${record.jamaatMauze}.`);
+}
+
+function updateScheduleStatus(recordId, status) {
+  const allowedStatuses = new Set(["Draft", "Scheduled", "Completed"]);
+  if (!allowedStatuses.has(status)) return;
+
+  const record = schedules.find((item) => item.id === recordId);
+  if (!record) return;
+
+  if (status === "Draft") {
+    schedules = schedules.map((item) => item.id === recordId ? getClearedScheduleRecord(item, "Status Update") : item);
+    saveSchedules();
+    renderAll();
+    showToast(`${record.jamaatMauze} marked Not Scheduled.`);
+    return;
+  }
+
+  const next = {
+    ...record,
+    status,
+    lastUpdatedBy: "Status Update",
+    lastUpdatedAt: new Date().toISOString()
+  };
+
+  if (!hasUsableTimeWindow(next)) {
+    renderTable();
+    showToast("Add date, start time and end time before marking this meeting scheduled or completed.");
+    return;
+  }
+
+  if (status === "Scheduled" || status === "Completed") {
+    const conflict = getScheduleConflict(next, next.id);
+    if (conflict) {
+      renderTable();
+      showToast(getConflictMessage(next, conflict));
+      return;
+    }
+  }
+
+  schedules = schedules.map((item) => item.id === recordId ? next : item);
+  saveSchedules();
+  renderAll();
+  showToast(`${record.jamaatMauze} marked ${status}.`);
 }
 
 function clearMusaedahSchedule(musaedahName) {
@@ -642,17 +757,7 @@ function clearMusaedahSchedule(musaedahName) {
   const affectedIds = new Set(affected.map((record) => record.id));
   schedules = schedules.map((record) => {
     if (!affectedIds.has(record.id)) return record;
-    return {
-      ...record,
-      scheduledDate: "",
-      startTime: "",
-      endTime: "",
-      meetingLink: "",
-      status: "Draft",
-      lastMessageSentAt: "",
-      lastUpdatedBy: "Clear Schedule",
-      lastUpdatedAt: new Date().toISOString()
-    };
+    return getClearedScheduleRecord(record);
   });
 
   saveSchedules();
@@ -966,8 +1071,20 @@ function setRoute() {
 document.addEventListener("click", (event) => {
   const actionButton = event.target.closest("[data-action]");
   if (!actionButton) return;
+  if (actionButton.dataset.action === "metric-filter") {
+    applyMetricFilter(actionButton.dataset.metric || "all");
+    const metricLabels = {
+      scheduled: "scheduled",
+      completed: "completed",
+      today: "today's",
+      "links-missing": "meetings with missing links"
+    };
+    showToast(actionButton.dataset.metric === "all" ? "Showing all HOTO records." : `Showing ${metricLabels[actionButton.dataset.metric] || "selected"} meetings.`);
+    return;
+  }
   if (actionButton.dataset.action === "auto-schedule-musaedah") {
     event.stopPropagation();
+    activeMetricFilter = "";
     $("musaedahFilter").value = actionButton.dataset.name;
     $("jamiatFilter").value = "";
     $("mauzeFilter").value = "";
@@ -989,6 +1106,8 @@ document.addEventListener("click", (event) => {
     $("mauzeFilter").value = "";
     $("dateFilter").value = "";
     $("statusFilter").value = "";
+    activeMetricFilter = "";
+    renderMetrics();
     renderMusaedahStats();
     renderTable();
     showToast(`Showing meetings for ${actionButton.dataset.name}.`);
@@ -999,13 +1118,22 @@ document.addEventListener("click", (event) => {
   if (!record) return;
 
   if (actionButton.dataset.action === "edit") openDrawer(record);
+  if (actionButton.dataset.action === "clear-row-schedule") clearSingleSchedule(record.id);
   if (actionButton.dataset.action === "calendar") openGoogleCalendar(record);
   if (actionButton.dataset.action === "copy") copyMessage(record);
   if (actionButton.dataset.action === "whatsapp") openWhatsApp(record);
 });
 
+document.addEventListener("change", (event) => {
+  const statusControl = event.target.closest("[data-action='change-status']");
+  if (!statusControl) return;
+  updateScheduleStatus(statusControl.dataset.id, statusControl.value);
+});
+
 ["jamiatFilter", "mauzeFilter", "musaedahFilter", "dateFilter", "statusFilter"].forEach((id) => {
   $(id).addEventListener("input", () => {
+    activeMetricFilter = "";
+    renderMetrics();
     renderMusaedahStats();
     renderTable();
   });
@@ -1070,7 +1198,7 @@ $("newRowBtn").addEventListener("click", () => {
     musaedahName: "",
     scheduledDate: new Date().toISOString().slice(0, 10),
     startTime: "10:00",
-    endTime: "10:45",
+    endTime: "10:15",
     timeZone: "Asia/Kolkata",
     meetingLink: "",
     instructions: "Please join five minutes early and keep HOTO notes ready.",

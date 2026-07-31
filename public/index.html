@@ -56,22 +56,26 @@
           </header>
 
           <section class="metric-grid" aria-label="Schedule summary">
-            <article class="metric-card">
+            <button class="metric-card" type="button" data-action="metric-filter" data-metric="all">
               <span>Total HOTO</span>
               <strong id="metricTotal">0</strong>
-            </article>
-            <article class="metric-card">
+            </button>
+            <button class="metric-card" type="button" data-action="metric-filter" data-metric="scheduled">
               <span>Scheduled</span>
               <strong id="metricScheduled">0</strong>
-            </article>
-            <article class="metric-card">
+            </button>
+            <button class="metric-card" type="button" data-action="metric-filter" data-metric="completed">
+              <span>Completed</span>
+              <strong id="metricCompleted">0</strong>
+            </button>
+            <button class="metric-card" type="button" data-action="metric-filter" data-metric="today">
               <span>Today</span>
               <strong id="metricToday">0</strong>
-            </article>
-            <article class="metric-card">
+            </button>
+            <button class="metric-card" type="button" data-action="metric-filter" data-metric="links-missing">
               <span>Links Missing</span>
               <strong id="metricLinks">0</strong>
-            </article>
+            </button>
           </section>
 
           <section class="panel musaedah-panel" aria-label="Musaedah meeting workload">
@@ -327,6 +331,7 @@
           <label class="field">
             <span>Meeting Duration</span>
             <select id="autoDuration">
+              <option value="15">15 minutes</option>
               <option value="20">20 minutes</option>
               <option value="25">25 minutes</option>
               <option value="30">30 minutes</option>

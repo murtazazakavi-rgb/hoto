@@ -280,7 +280,7 @@ h3 {
 
 .metric-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
@@ -296,7 +296,22 @@ h3 {
 }
 
 .metric-card {
+  appearance: none;
   padding: 16px;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.metric-card:hover,
+.metric-card.active {
+  border-color: var(--interactive);
+  box-shadow: var(--shadow-md);
+}
+
+.metric-card:hover {
+  transform: translateY(-1px);
 }
 
 .metric-card span {
@@ -532,6 +547,29 @@ h3 {
 }
 
 .badge.draft {
+  color: var(--warning);
+  background: var(--warning-subtle);
+}
+
+.status-select {
+  min-width: 136px;
+  padding: 7px 30px 7px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.status-select.scheduled {
+  color: var(--info);
+  background: var(--info-subtle);
+}
+
+.status-select.completed {
+  color: var(--success);
+  background: var(--success-subtle);
+}
+
+.status-select.draft {
   color: var(--warning);
   background: var(--warning-subtle);
 }
