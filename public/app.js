@@ -201,6 +201,21 @@ function getHandoverPerson(record) {
   return record.handoverImaeFatemaName || record.handoverAmilName || "";
 }
 
+function getTakeoverPerson(record) {
+  return record.takeoverImaeFatemaName || record.takeoverAmilName || "";
+}
+
+function getMeetingPeople(record) {
+  return [getHandoverPerson(record), getTakeoverPerson(record)]
+    .map(normalize)
+    .filter(Boolean);
+}
+
+function getMeetingPersonName(record, normalizedPerson) {
+  return [getHandoverPerson(record), getTakeoverPerson(record)]
+    .find((person) => normalize(person) === normalizedPerson) || "This person";
+}
+
 function schedulesOverlap(left, right) {
   const leftStart = timeToMinutes(left.startTime);
   const leftEnd = timeToMinutes(left.endTime);
@@ -213,7 +228,7 @@ function schedulesOverlap(left, right) {
 function getScheduleConflict(candidate, ignoreId = "") {
   if (!hasUsableTimeWindow(candidate) || hasInvalidTimeWindow(candidate)) return null;
   const candidateMusaedah = normalize(candidate.musaedahName);
-  const candidateHandover = normalize(getHandoverPerson(candidate));
+  const candidatePeople = getMeetingPeople(candidate);
 
   const conflict = schedules.find((record) => {
     if (record.id === ignoreId) return false;
@@ -223,22 +238,25 @@ function getScheduleConflict(candidate, ignoreId = "") {
     if (!schedulesOverlap(candidate, record)) return false;
 
     const sameMusaedah = candidateMusaedah && normalize(record.musaedahName) === candidateMusaedah;
-    const sameHandover = candidateHandover && normalize(getHandoverPerson(record)) === candidateHandover;
-    return sameMusaedah || sameHandover;
+    const recordPeople = new Set(getMeetingPeople(record));
+    const samePerson = candidatePeople.some((person) => recordPeople.has(person));
+    return sameMusaedah || samePerson;
   }) || null;
 
   if (!conflict) return null;
-  const sameHandover = candidateHandover && normalize(getHandoverPerson(conflict)) === candidateHandover;
+  const conflictPeople = new Set(getMeetingPeople(conflict));
+  const matchingPerson = candidatePeople.find((person) => conflictPeople.has(person));
   return {
-    type: sameHandover ? "handover" : "musaedah",
+    type: matchingPerson ? "person" : "musaedah",
+    person: matchingPerson ? getMeetingPersonName(candidate, matchingPerson) : "",
     record: conflict
   };
 }
 
 function getConflictMessage(candidate, conflict) {
   const record = conflict.record || conflict;
-  if (conflict.type === "handover") {
-    const person = getHandoverPerson(candidate) || "This handover person";
+  if (conflict.type === "person") {
+    const person = conflict.person || "This person";
     return `${person} is already scheduled for ${record.jamaatMauze}, ${record.jamiat} on ${formatDate(record.scheduledDate)} from ${formatTimeRange(record)}. Choose another time.`;
   }
   return `${candidate.musaedahName} already has HOTO for ${record.jamaatMauze}, ${record.jamiat} on ${formatDate(record.scheduledDate)} from ${formatTimeRange(record)}. Choose a different date or time.`;
@@ -309,15 +327,15 @@ function findAutoSchedulePlan(config) {
       const conflictsExisting = getScheduleConflict(proposed, candidate.id);
       const conflictsPlanned = planned.some((plan) => {
         const sameMusaedah = normalize(plan.musaedahName) === normalize(candidate.musaedahName);
-        const candidateHandover = normalize(getHandoverPerson(candidate));
-        const sameHandover = candidateHandover && normalize(plan.handoverPerson) === candidateHandover;
+        const plannedPeople = new Set(plan.people || []);
+        const samePerson = getMeetingPeople(candidate).some((person) => plannedPeople.has(person));
         const sameDay = plan.scheduledDate === item.scheduledDate;
-        return (sameMusaedah || sameHandover) && sameDay && schedulesOverlap(item, plan);
+        return (sameMusaedah || samePerson) && sameDay && schedulesOverlap(item, plan);
       });
       return !conflictsExisting && !conflictsPlanned;
     });
     if (!slot) break;
-    planned.push({ id: candidate.id, musaedahName: candidate.musaedahName, handoverPerson: getHandoverPerson(candidate), ...slot });
+    planned.push({ id: candidate.id, musaedahName: candidate.musaedahName, people: getMeetingPeople(candidate), ...slot });
   }
 
   return {
