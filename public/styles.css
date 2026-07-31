@@ -1138,6 +1138,14 @@ h3 {
     border-color: var(--interactive);
   }
 
+  .musaedah-stats-table tr {
+    cursor: pointer;
+  }
+
+  .musaedah-stats-table tr:not(.expanded) {
+    padding: 12px 14px;
+  }
+
   .musaedah-stats-table td,
   .schedule-table td {
     display: grid;
@@ -1175,7 +1183,8 @@ h3 {
   .musaedah-stats-table td:first-child {
     grid-template-columns: 1fr;
     gap: 4px;
-    padding-bottom: 12px;
+    padding: 0;
+    border-bottom: 0;
   }
 
   .musaedah-stats-table td:first-child::before {
@@ -1185,6 +1194,19 @@ h3 {
   .musaedah-stats-table td:first-child .primary-cell strong {
     color: var(--text-primary);
     font-size: 17px;
+  }
+
+  .musaedah-stats-table td:first-child .primary-cell small {
+    font-size: 12px;
+  }
+
+  .musaedah-stats-table tr:not(.expanded) td:not(:first-child) {
+    display: none;
+  }
+
+  .musaedah-stats-table tr.expanded td:first-child {
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
   }
 
   .musaedah-stats-table td:not(:first-child) {
@@ -1246,6 +1268,10 @@ h3 {
     min-height: 38px;
     padding-inline: 8px;
     font-size: 12px;
+  }
+
+  .musaedah-stats-table .row-actions {
+    grid-template-columns: 1fr;
   }
 
   .drawer {

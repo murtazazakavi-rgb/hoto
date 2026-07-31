@@ -10,6 +10,7 @@ let activeYear = loadActiveYear();
 let schedules = loadSchedules(activeYear);
 let activeRecordId = "";
 let activeMetricFilter = "";
+let expandedMusaedahName = "";
 let databaseMode = "local-demo";
 let serverSyncing = false;
 
@@ -512,12 +513,13 @@ function renderMusaedahStats() {
   const selected = $("musaedahFilter").value;
   $("musaedahStatsRows").innerHTML = getMusaedahStats().map((item) => {
     const completion = item.total ? Math.round((item.completed / item.total) * 100) : 0;
+    const expanded = normalize(item.name) === normalize(expandedMusaedahName);
     return `
-      <tr class="${item.name === selected ? "selected" : ""}" data-action="filter-musaedah" data-name="${escapeAttribute(item.name)}" tabindex="0">
+      <tr class="${item.name === selected ? "selected" : ""} ${expanded ? "expanded" : ""}" data-action="filter-musaedah" data-name="${escapeAttribute(item.name)}" tabindex="0">
         <td data-label="Musaedah">
           <span class="primary-cell">
             <strong>${escapeHtml(item.name)}</strong>
-            <small>Click to view meetings</small>
+            <small>${item.scheduled} scheduled · ${item.remaining} remaining</small>
           </span>
         </td>
         <td data-label="Total">${item.total}</td>
@@ -535,6 +537,7 @@ function renderMusaedahStats() {
         </td>
         <td data-label="Actions">
           <div class="row-actions">
+            <button class="btn btn-ghost" type="button" data-action="view-musaedah-meetings" data-name="${escapeAttribute(item.name)}">View Meetings</button>
             <button class="btn btn-ghost" type="button" data-action="auto-schedule-musaedah" data-name="${escapeAttribute(item.name)}">Auto Schedule</button>
             <button class="btn btn-ghost" type="button" data-action="clear-musaedah-schedule" data-name="${escapeAttribute(item.name)}">Clear Schedule</button>
           </div>
@@ -639,6 +642,7 @@ function renderAll() {
 
 function clearScheduleFilters() {
   activeMetricFilter = "";
+  expandedMusaedahName = "";
   $("jamiatFilter").value = "";
   $("mauzeFilter").value = "";
   $("musaedahFilter").value = "";
@@ -651,6 +655,7 @@ function clearScheduleFilters() {
 
 function applyMetricFilter(metric) {
   activeMetricFilter = metric === "all" ? "" : metric;
+  expandedMusaedahName = "";
   $("jamiatFilter").value = "";
   $("mauzeFilter").value = "";
   $("musaedahFilter").value = "";
@@ -1101,6 +1106,13 @@ document.addEventListener("click", (event) => {
     return;
   }
   if (actionButton.dataset.action === "filter-musaedah") {
+    if (window.matchMedia("(max-width: 720px)").matches) {
+      expandedMusaedahName = normalize(expandedMusaedahName) === normalize(actionButton.dataset.name)
+        ? ""
+        : actionButton.dataset.name;
+      renderMusaedahStats();
+      return;
+    }
     $("musaedahFilter").value = actionButton.dataset.name;
     $("jamiatFilter").value = "";
     $("mauzeFilter").value = "";
@@ -1110,6 +1122,21 @@ document.addEventListener("click", (event) => {
     renderMetrics();
     renderMusaedahStats();
     renderTable();
+    showToast(`Showing meetings for ${actionButton.dataset.name}.`);
+    return;
+  }
+  if (actionButton.dataset.action === "view-musaedah-meetings") {
+    event.stopPropagation();
+    $("musaedahFilter").value = actionButton.dataset.name;
+    $("jamiatFilter").value = "";
+    $("mauzeFilter").value = "";
+    $("dateFilter").value = "";
+    $("statusFilter").value = "";
+    activeMetricFilter = "";
+    renderMetrics();
+    renderMusaedahStats();
+    renderTable();
+    document.querySelector(".table-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
     showToast(`Showing meetings for ${actionButton.dataset.name}.`);
     return;
   }
@@ -1133,6 +1160,7 @@ document.addEventListener("change", (event) => {
 ["jamiatFilter", "mauzeFilter", "musaedahFilter", "dateFilter", "statusFilter"].forEach((id) => {
   $(id).addEventListener("input", () => {
     activeMetricFilter = "";
+    expandedMusaedahName = "";
     renderMetrics();
     renderMusaedahStats();
     renderTable();
