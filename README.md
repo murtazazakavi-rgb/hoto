@@ -7,6 +7,7 @@ A simplified front-end module for HOTO scheduling using the attached DA Design S
 - Shows all Jamiat HOTO schedules in one Musaedah board.
 - Supports separate HOTO years, starting with `1448H`.
 - Lets Musaedaat edit date, time, meeting link, status and instructions.
+- Prevents overlapping meetings for the same Musaedah or same handover person.
 - Shows an Imae Fatema read-only schedule view.
 - Generates a default WhatsApp-ready message for each HOTO row.
 - Stores HOTO records in Teable through server-side Next.js API routes.

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isTeableConfigured, listSchedulesByYear, syncSchedulesForYear } from "../../../lib/teable.js";
 import { normalizeYear } from "../../../lib/field-map.js";
+import { validateScheduleBatch } from "../../../lib/schedule-conflicts.js";
 
 export async function GET(request) {
   try {
@@ -27,6 +28,14 @@ export async function PUT(request) {
 
     if (!isTeableConfigured()) {
       return NextResponse.json({ error: "Teable is not configured." }, { status: 503 });
+    }
+
+    const existingRecords = await listSchedulesByYear(year);
+    const nextById = new Map(existingRecords.map((record) => [record.id, record]));
+    records.forEach((record) => nextById.set(record.id, record));
+    const validation = validateScheduleBatch([...nextById.values()]);
+    if (!validation.valid) {
+      return NextResponse.json({ error: validation.message }, { status: 409 });
     }
 
     const saved = await syncSchedulesForYear(year, records);

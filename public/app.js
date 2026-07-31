@@ -145,7 +145,10 @@ function saveSchedules() {
           renderAll();
         }
       })
-      .catch((error) => showToast(error.message || "Could not save to Teable."))
+      .catch((error) => {
+        showToast(error.message || "Could not save to Teable.");
+        hydrateFromServer();
+      })
       .finally(() => {
         serverSyncing = false;
       });
@@ -194,27 +197,51 @@ function hasInvalidTimeWindow(record) {
   return start !== null && end !== null && start >= end;
 }
 
-function getScheduleConflict(candidate, ignoreId = "") {
-  if (!hasUsableTimeWindow(candidate) || !candidate.musaedahName || hasInvalidTimeWindow(candidate)) return null;
-  const candidateStart = timeToMinutes(candidate.startTime);
-  const candidateEnd = timeToMinutes(candidate.endTime);
-  const candidateMusaedah = normalize(candidate.musaedahName);
+function getHandoverPerson(record) {
+  return record.handoverImaeFatemaName || record.handoverAmilName || "";
+}
 
-  return schedules.find((record) => {
+function schedulesOverlap(left, right) {
+  const leftStart = timeToMinutes(left.startTime);
+  const leftEnd = timeToMinutes(left.endTime);
+  const rightStart = timeToMinutes(right.startTime);
+  const rightEnd = timeToMinutes(right.endTime);
+  if ([leftStart, leftEnd, rightStart, rightEnd].some((value) => value === null)) return false;
+  return leftStart < rightEnd && rightStart < leftEnd;
+}
+
+function getScheduleConflict(candidate, ignoreId = "") {
+  if (!hasUsableTimeWindow(candidate) || hasInvalidTimeWindow(candidate)) return null;
+  const candidateMusaedah = normalize(candidate.musaedahName);
+  const candidateHandover = normalize(getHandoverPerson(candidate));
+
+  const conflict = schedules.find((record) => {
     if (record.id === ignoreId) return false;
     if (record.status === "Cancelled") return false;
     if (!hasUsableTimeWindow(record)) return false;
     if (record.scheduledDate !== candidate.scheduledDate) return false;
-    if (normalize(record.musaedahName) !== candidateMusaedah) return false;
+    if (!schedulesOverlap(candidate, record)) return false;
 
-    const recordStart = timeToMinutes(record.startTime);
-    const recordEnd = timeToMinutes(record.endTime);
-    return candidateStart < recordEnd && recordStart < candidateEnd;
+    const sameMusaedah = candidateMusaedah && normalize(record.musaedahName) === candidateMusaedah;
+    const sameHandover = candidateHandover && normalize(getHandoverPerson(record)) === candidateHandover;
+    return sameMusaedah || sameHandover;
   }) || null;
+
+  if (!conflict) return null;
+  const sameHandover = candidateHandover && normalize(getHandoverPerson(conflict)) === candidateHandover;
+  return {
+    type: sameHandover ? "handover" : "musaedah",
+    record: conflict
+  };
 }
 
 function getConflictMessage(candidate, conflict) {
-  return `${candidate.musaedahName} already has HOTO for ${conflict.jamaatMauze}, ${conflict.jamiat} on ${formatDate(conflict.scheduledDate)} from ${formatTimeRange(conflict)}. Choose a different date or time.`;
+  const record = conflict.record || conflict;
+  if (conflict.type === "handover") {
+    const person = getHandoverPerson(candidate) || "This handover person";
+    return `${person} is already scheduled for ${record.jamaatMauze}, ${record.jamiat} on ${formatDate(record.scheduledDate)} from ${formatTimeRange(record)}. Choose another time.`;
+  }
+  return `${candidate.musaedahName} already has HOTO for ${record.jamaatMauze}, ${record.jamiat} on ${formatDate(record.scheduledDate)} from ${formatTimeRange(record)}. Choose a different date or time.`;
 }
 
 function addDays(dateValue, days) {
@@ -282,17 +309,15 @@ function findAutoSchedulePlan(config) {
       const conflictsExisting = getScheduleConflict(proposed, candidate.id);
       const conflictsPlanned = planned.some((plan) => {
         const sameMusaedah = normalize(plan.musaedahName) === normalize(candidate.musaedahName);
+        const candidateHandover = normalize(getHandoverPerson(candidate));
+        const sameHandover = candidateHandover && normalize(plan.handoverPerson) === candidateHandover;
         const sameDay = plan.scheduledDate === item.scheduledDate;
-        const planStart = timeToMinutes(plan.startTime);
-        const planEnd = timeToMinutes(plan.endTime);
-        const slotStart = timeToMinutes(item.startTime);
-        const slotEnd = timeToMinutes(item.endTime);
-        return sameMusaedah && sameDay && slotStart < planEnd && planStart < slotEnd;
+        return (sameMusaedah || sameHandover) && sameDay && schedulesOverlap(item, plan);
       });
       return !conflictsExisting && !conflictsPlanned;
     });
     if (!slot) break;
-    planned.push({ id: candidate.id, musaedahName: candidate.musaedahName, ...slot });
+    planned.push({ id: candidate.id, musaedahName: candidate.musaedahName, handoverPerson: getHandoverPerson(candidate), ...slot });
   }
 
   return {
@@ -1047,7 +1072,7 @@ $("scheduleForm").addEventListener("submit", (event) => {
   const conflict = getScheduleConflict(next, next.id);
   if (conflict) {
     updateMessagePreview();
-    showToast("This Musaedah already has HOTO in that time frame.");
+    showToast(getConflictMessage(next, conflict));
     return;
   }
   const existingIndex = schedules.findIndex((record) => record.id === next.id);
