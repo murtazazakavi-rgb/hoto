@@ -500,7 +500,10 @@ function renderMusaedahStats() {
           <span class="completion-text">${completion}%</span>
         </td>
         <td>
-          <button class="btn btn-ghost" type="button" data-action="auto-schedule-musaedah" data-name="${escapeAttribute(item.name)}">Auto Schedule</button>
+          <div class="row-actions">
+            <button class="btn btn-ghost" type="button" data-action="auto-schedule-musaedah" data-name="${escapeAttribute(item.name)}">Auto Schedule</button>
+            <button class="btn btn-ghost" type="button" data-action="clear-musaedah-schedule" data-name="${escapeAttribute(item.name)}">Clear Schedule</button>
+          </div>
         </td>
       </tr>
     `;
@@ -600,6 +603,43 @@ function clearScheduleFilters() {
   $("statusFilter").value = "";
   renderMusaedahStats();
   renderTable();
+}
+
+function clearMusaedahSchedule(musaedahName) {
+  const affected = schedules.filter((record) => {
+    const sameMusaedah = normalize(record.musaedahName) === normalize(musaedahName);
+    const canClear = record.status !== "Completed" && record.status !== "Cancelled";
+    const hasSchedule = record.scheduledDate || record.startTime || record.endTime || record.meetingLink || record.status === "Scheduled";
+    return sameMusaedah && canClear && hasSchedule;
+  });
+
+  if (!affected.length) {
+    showToast(`No active schedules to clear for ${musaedahName}.`);
+    return;
+  }
+
+  const confirmed = window.confirm(`Clear schedule for ${affected.length} active HOTO meeting(s) assigned to ${musaedahName}? This will remove date, time, meeting link and set them back to Draft.`);
+  if (!confirmed) return;
+
+  const affectedIds = new Set(affected.map((record) => record.id));
+  schedules = schedules.map((record) => {
+    if (!affectedIds.has(record.id)) return record;
+    return {
+      ...record,
+      scheduledDate: "",
+      startTime: "",
+      endTime: "",
+      meetingLink: "",
+      status: "Draft",
+      lastMessageSentAt: "",
+      lastUpdatedBy: "Clear Schedule",
+      lastUpdatedAt: new Date().toISOString()
+    };
+  });
+
+  saveSchedules();
+  renderAll();
+  showToast(`Cleared ${affected.length} schedule(s) for ${musaedahName}.`);
 }
 
 function openDrawer(record) {
@@ -918,6 +958,11 @@ document.addEventListener("click", (event) => {
     renderMusaedahStats();
     renderTable();
     openAutoScheduleDialog(actionButton.dataset.name);
+    return;
+  }
+  if (actionButton.dataset.action === "clear-musaedah-schedule") {
+    event.stopPropagation();
+    clearMusaedahSchedule(actionButton.dataset.name);
     return;
   }
   if (actionButton.dataset.action === "filter-musaedah") {
