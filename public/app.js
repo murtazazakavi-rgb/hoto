@@ -514,26 +514,26 @@ function renderMusaedahStats() {
     const completion = item.total ? Math.round((item.completed / item.total) * 100) : 0;
     return `
       <tr class="${item.name === selected ? "selected" : ""}" data-action="filter-musaedah" data-name="${escapeAttribute(item.name)}" tabindex="0">
-        <td>
+        <td data-label="Musaedah">
           <span class="primary-cell">
             <strong>${escapeHtml(item.name)}</strong>
             <small>Click to view meetings</small>
           </span>
         </td>
-        <td>${item.total}</td>
-        <td>${item.remaining}</td>
-        <td>${item.draft}</td>
-        <td>${item.scheduled}</td>
-        <td>${item.completed}</td>
-        <td>${item.cancelled}</td>
-        <td>${item.missingLink}</td>
-        <td>
+        <td data-label="Total">${item.total}</td>
+        <td data-label="Remaining">${item.remaining}</td>
+        <td data-label="Not Scheduled">${item.draft}</td>
+        <td data-label="Scheduled">${item.scheduled}</td>
+        <td data-label="Completed">${item.completed}</td>
+        <td data-label="Cancelled">${item.cancelled}</td>
+        <td data-label="Links Missing">${item.missingLink}</td>
+        <td data-label="Completion">
           <span class="completion-meter" aria-label="${completion}% completed">
             <span style="width:${completion}%"></span>
           </span>
           <span class="completion-text">${completion}%</span>
         </td>
-        <td>
+        <td data-label="Actions">
           <div class="row-actions">
             <button class="btn btn-ghost" type="button" data-action="auto-schedule-musaedah" data-name="${escapeAttribute(item.name)}">Auto Schedule</button>
             <button class="btn btn-ghost" type="button" data-action="clear-musaedah-schedule" data-name="${escapeAttribute(item.name)}">Clear Schedule</button>
@@ -550,21 +550,21 @@ function renderTable() {
   $("emptyTable").hidden = rows.length > 0;
   $("scheduleRows").innerHTML = rows.map((record, index) => `
     <tr>
-      <td class="serial-cell">${escapeHtml(record.sourceSrNo || index + 1)}</td>
-      <td>${escapeHtml(record.jamiat)}</td>
-      <td>
+      <td class="serial-cell" data-label="Sr. No.">${escapeHtml(record.sourceSrNo || index + 1)}</td>
+      <td data-label="Jamiat">${escapeHtml(record.jamiat)}</td>
+      <td data-label="Jamaat / Mauze">
         <span class="primary-cell">
           <strong>${escapeHtml(record.jamaatMauze)}</strong>
           <small>${escapeHtml(record.timeZone)}</small>
         </span>
       </td>
-      <td>${escapeHtml(record.handoverImaeFatemaName || record.handoverAmilName)}</td>
-      <td>${escapeHtml(record.takeoverImaeFatemaName || record.takeoverAmilName)}</td>
-      <td>${escapeHtml(record.musaedahName)}</td>
-      <td>${formatDate(record.scheduledDate)}</td>
-      <td>${escapeHtml(formatTimeRange(record))}</td>
-      <td>${record.meetingLink ? `<a class="link-pill" href="${escapeAttribute(record.meetingLink)}" target="_blank" rel="noreferrer">${escapeHtml(record.meetingLink)}</a>` : `<span class="muted">Missing</span>`}</td>
-      <td>
+      <td data-label="Handed By Zawjat of">${escapeHtml(record.handoverImaeFatemaName || record.handoverAmilName)}</td>
+      <td data-label="Taken By Zawjat of">${escapeHtml(record.takeoverImaeFatemaName || record.takeoverAmilName)}</td>
+      <td data-label="Musaedah">${escapeHtml(record.musaedahName)}</td>
+      <td data-label="Date">${formatDate(record.scheduledDate)}</td>
+      <td data-label="Time">${escapeHtml(formatTimeRange(record))}</td>
+      <td data-label="Google Meet Link">${record.meetingLink ? `<a class="link-pill" href="${escapeAttribute(record.meetingLink)}" target="_blank" rel="noreferrer">${escapeHtml(record.meetingLink)}</a>` : `<span class="muted">Missing</span>`}</td>
+      <td data-label="Status">
         <select class="status-select ${record.status.toLowerCase()}" data-action="change-status" data-id="${record.id}" aria-label="Change status for ${escapeAttribute(record.jamaatMauze)}">
           <option value="Draft" ${record.status === "Draft" ? "selected" : ""}>Not Scheduled</option>
           <option value="Scheduled" ${record.status === "Scheduled" ? "selected" : ""}>Scheduled</option>
@@ -572,7 +572,7 @@ function renderTable() {
           ${record.status === "Cancelled" ? `<option value="Cancelled" selected disabled>Cancelled</option>` : ""}
         </select>
       </td>
-      <td>
+      <td data-label="Actions">
         <div class="row-actions">
           <button class="btn btn-ghost" type="button" data-action="edit" data-id="${record.id}">Edit</button>
           <button class="btn btn-ghost" type="button" data-action="clear-row-schedule" data-id="${record.id}" ${canClearRecordSchedule(record) ? "" : "disabled"}>Clear Schedule</button>
