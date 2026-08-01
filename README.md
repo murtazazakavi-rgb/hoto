@@ -1,6 +1,6 @@
 # Imae Fatema HOTO Schedule
 
-A simplified front-end module for HOTO scheduling using the attached DA Design System style.
+A simplified front-end module for HOTO scheduling using the Rayhanat design system tokens from [`idiot95/rayhanat-design-system`](https://github.com/idiot95/rayhanat-design-system).
 
 ## What It Does
 
@@ -17,6 +17,10 @@ A simplified front-end module for HOTO scheduling using the attached DA Design S
 Use the `HOTO Year` selector to switch between years. Super Admin can unlock the admin controls and choose `Import New Year` to upload the next year's Excel file into Teable.
 
 The app does not bundle HOTO schedule data in the deployed code. Teable is the source of truth for shared yearly records.
+
+## Design System
+
+The visual token layer is copied from Rayhanat's generated `packages/tokens/dist/tokens.css` into `public/assets/da-design-system.css`. Pages set `lang`, `dir`, and `data-theme` on `<html>` as expected by Rayhanat.
 
 ## Open Locally
 

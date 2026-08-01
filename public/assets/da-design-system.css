@@ -395,3 +395,17 @@
   .arh-no-print { display: none !important; }
   .arh-card { break-inside: avoid; box-shadow: none; }
 }
+
+/* ── Wrapping ──────────────────────────────────────────────────────────────
+   Text wraps by rule, not by hand-inserted breaks. Headings balance, body
+   copy wraps pretty (no orphan last word), figures and identifiers never
+   break, and Arabic never hyphenates.
+   ───────────────────────────────────────────────────────────────────────── */
+.arh-balance { text-wrap: balance; }        /* headings up to ~6 words */
+.arh-pretty  { text-wrap: pretty; }         /* body copy — kills orphans */
+.arh-nowrap  { white-space: nowrap; }       /* IDs, figures, dates, kbd */
+.arh-break   { overflow-wrap: anywhere; word-break: break-word; } /* URLs, tokens */
+.arh-hyphens { hyphens: auto; }
+[lang="ar"] .arh-hyphens, [dir="rtl"] .arh-hyphens { hyphens: manual; }
+h1, h2, h3 { text-wrap: balance; }
+p, li, dd { text-wrap: pretty; }
