@@ -6,7 +6,7 @@ A simplified front-end module for HOTO scheduling using the Rayhanat design syst
 
 - Shows all Jamiat HOTO schedules in one Musaedah board.
 - Supports separate HOTO years, starting with `1448H`.
-- Lets Musaedaat edit date, time, meeting link, status and instructions.
+- Lets Musaedaat edit date, time, meeting link, status, instructions, and MOM notes.
 - Prevents overlapping meetings for the same Musaedah or same handover person.
 - Shows an Imae Fatema read-only schedule view.
 - Generates a default WhatsApp-ready message for each HOTO row.

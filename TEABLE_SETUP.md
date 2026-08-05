@@ -31,7 +31,7 @@ Use these exact field names:
 
 Recommended field types:
 
-- `App ID`, `Year`, names, links, instructions, remarks: text
+- `App ID`, `Year`, names, links, instructions, remarks / MOM: text
 - `Sr. No.`: number
 - `Date`: date
 - `Status`: single select with `Draft`, `Scheduled`, `Completed`, `Cancelled`

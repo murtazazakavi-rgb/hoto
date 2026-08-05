@@ -789,6 +789,7 @@ function openDrawer(record) {
   $("statusInput").value = record.status;
   $("linkInput").value = record.meetingLink;
   $("instructionsInput").value = record.instructions;
+  $("remarksInput").value = record.remarks || "";
   updateMessagePreview();
 
   $("drawerBackdrop").hidden = false;
@@ -887,6 +888,7 @@ function getRecordFromForm() {
     timeZone: $("timezoneInput").value.trim(),
     meetingLink: $("linkInput").value.trim(),
     instructions: $("instructionsInput").value.trim(),
+    remarks: $("remarksInput").value.trim(),
     status: $("statusInput").value,
     lastMessageSentAt: "",
     lastUpdatedBy: "Musaedah",
@@ -976,7 +978,7 @@ function mapImportedRow(row, index, year, importedAt, sourceName) {
     meetingLink,
     instructions: getRowValue(row, ["Instructions"]) || "Please update the schedule date, time and meeting link before sending the WhatsApp message.",
     status,
-    remarks: getRowValue(row, ["Remarks", "Notes"]),
+    remarks: getRowValue(row, ["MOM", "Minutes of Meeting", "Meeting Notes", "Remarks", "Notes"]),
     sourceFileName: sourceName,
     lastMessageSentAt: "",
     lastUpdatedBy: "Excel import",
@@ -1230,6 +1232,7 @@ $("newRowBtn").addEventListener("click", () => {
     timeZone: "Asia/Kolkata",
     meetingLink: "",
     instructions: "Please join five minutes early and keep HOTO notes ready.",
+    remarks: "",
     status: "Draft"
   });
 });
