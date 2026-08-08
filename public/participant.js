@@ -2,6 +2,17 @@ const LEGACY_STORAGE_KEY = "hoto-simple-schedules-1448h-v1";
 const STORAGE_KEY_PREFIX = "hoto-simple-schedules-";
 const ACTIVE_YEAR_STORAGE_KEY = "hoto-simple-active-year-v1";
 const DEFAULT_YEAR = "1448H";
+const SEED_CONTACT_FIELDS = [
+  "handoverAmilName",
+  "handoverAmilMobile",
+  "handoverImaeFatemaName",
+  "handoverImaeFatemaMobile",
+  "takeoverAmilName",
+  "takeoverAmilMobile",
+  "takeoverImaeFatemaName",
+  "takeoverImaeFatemaMobile"
+];
+const SEED_BACKFILL_FIELDS = ["jamiat", "jamaatMauze", "musaedahName", "timeZone", "sourceFileName"];
 const activeYear = loadActiveYear();
 let schedules = loadSchedules(activeYear);
 let databaseMode = "local-demo";
@@ -22,7 +33,7 @@ async function hydrateFromServer() {
     if (databaseMode !== "teable") return;
     const data = await apiRequest(`/api/schedules?year=${encodeURIComponent(activeYear)}`);
     if (Array.isArray(data.records)) {
-      schedules = data.records;
+      schedules = mergeSeedData(data.records, activeYear);
       localStorage.setItem(getScheduleStorageKey(activeYear), JSON.stringify(schedules));
       renderParticipantCards();
     }
@@ -47,8 +58,56 @@ function loadActiveYear() {
   return urlYear || storedYear || DEFAULT_YEAR;
 }
 
+function getSeedSchedulesForYear(year) {
+  const seedYear = normalizeYear(window.HOTO_IMPORTED_META?.cycle || DEFAULT_YEAR);
+  const requestedYear = normalizeYear(year);
+  const seedRecords = Array.isArray(window.HOTO_IMPORTED_SCHEDULES) ? window.HOTO_IMPORTED_SCHEDULES : [];
+  if (!seedRecords.length || seedYear !== requestedYear) return [];
+  return seedRecords.map((record) => ({ ...record }));
+}
+
+function normalize(value) {
+  return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function getRecordSeedKey(record) {
+  return String(record?.sourceSrNo || "").trim();
+}
+
+function getRecordPlaceKey(record) {
+  return `${normalize(record?.jamiat)}|${normalize(record?.jamaatMauze)}`;
+}
+
+function mergeSeedData(records, year) {
+  const seeds = getSeedSchedulesForYear(year);
+  if (!seeds.length || !Array.isArray(records)) return Array.isArray(records) ? records : [];
+  const seedsBySrNo = new Map(seeds.map((record) => [getRecordSeedKey(record), record]).filter(([key]) => key));
+  const seedsByPlace = new Map(seeds.map((record) => [getRecordPlaceKey(record), record]).filter(([key]) => key !== "|"));
+
+  return records.map((record) => {
+    const seed = seedsBySrNo.get(getRecordSeedKey(record)) || seedsByPlace.get(getRecordPlaceKey(record));
+    if (!seed) return record;
+    const merged = { ...record };
+    SEED_BACKFILL_FIELDS.forEach((field) => {
+      if (!merged[field] && seed[field]) merged[field] = seed[field];
+    });
+    SEED_CONTACT_FIELDS.forEach((field) => {
+      merged[field] = seed[field] || "";
+    });
+    return merged;
+  });
+}
+
+function repairStoredSchedules(year, records) {
+  const repaired = mergeSeedData(records, year);
+  if (JSON.stringify(repaired) !== JSON.stringify(records)) {
+    localStorage.setItem(getScheduleStorageKey(year), JSON.stringify(repaired));
+  }
+  return repaired;
+}
+
 function getDefaultSchedulesForYear(year) {
-  return [];
+  return getSeedSchedulesForYear(year);
 }
 
 function loadSchedules(year = activeYear) {
@@ -65,7 +124,7 @@ function loadSchedules(year = activeYear) {
   if (!stored) return getDefaultSchedulesForYear(normalizedYear);
   try {
     const parsed = JSON.parse(stored);
-    return Array.isArray(parsed) ? parsed : getDefaultSchedulesForYear(normalizedYear);
+    return Array.isArray(parsed) ? repairStoredSchedules(normalizedYear, parsed) : getDefaultSchedulesForYear(normalizedYear);
   } catch {
     return getDefaultSchedulesForYear(normalizedYear);
   }
@@ -105,12 +164,52 @@ function googleDateTime(dateValue, timeValue) {
   return `${dateValue.replaceAll("-", "")}T${timeValue.replace(":", "")}00`;
 }
 
+function formatContactForMessage(name, mobile) {
+  const contactName = String(name || "").trim() || "To be confirmed";
+  const contactMobile = String(mobile || "").trim();
+  return contactMobile ? `${contactName} | Mobile: ${contactMobile}` : `${contactName} | Mobile: To be confirmed`;
+}
+
+function getWhatsAppNumber(mobile) {
+  const digits = String(mobile || "").replace(/\D/g, "");
+  if (!digits) return "";
+  return digits.length === 10 ? `91${digits}` : digits;
+}
+
+function buildWhatsAppUrlForMobile(mobile, record) {
+  const number = getWhatsAppNumber(mobile);
+  const target = number ? `/${number}` : "";
+  return `https://wa.me${target}?text=${encodeURIComponent(formatMessage(record))}`;
+}
+
+function renderContactCell(name, mobile, record) {
+  const contactName = String(name || "").trim();
+  const contactMobile = String(mobile || "").trim();
+  if (!contactName && !contactMobile) return `<span class="muted">To be confirmed</span>`;
+  const displayName = contactName || "Name pending";
+  const mobileMarkup = contactMobile
+    ? `<a class="contact-phone" href="${escapeAttribute(buildWhatsAppUrlForMobile(contactMobile, record))}" target="_blank" rel="noreferrer" aria-label="Message ${escapeAttribute(displayName)} on WhatsApp">${escapeHtml(contactMobile)}</a>`
+    : `<small class="muted">Mobile pending</small>`;
+  return `
+    <span class="contact-cell">
+      <strong>${escapeHtml(displayName)}</strong>
+      ${mobileMarkup}
+    </span>
+  `;
+}
+
+function renderParticipantContact(label, name, mobile, record) {
+  return `<p class="contact-meta"><span>${escapeHtml(label)}</span>${renderContactCell(name, mobile, record)}</p>`;
+}
+
 function buildCalendarDetails(record) {
   return [
     `Jamiat: ${record.jamiat}`,
     `Jamaat / Mauze: ${record.jamaatMauze}`,
-    `Being Handed By Zawjat of: ${record.handoverImaeFatemaName || record.handoverAmilName || "To be confirmed"}`,
-    `Being Taken By Zawjat of: ${record.takeoverImaeFatemaName || record.takeoverAmilName || "To be confirmed"}`,
+    `Handing Amil / Masool: ${formatContactForMessage(record.handoverAmilName, record.handoverAmilMobile)}`,
+    `Handing Imae Fatema / Azwaaj: ${formatContactForMessage(record.handoverImaeFatemaName, record.handoverImaeFatemaMobile)}`,
+    `Taking Amil / Masool: ${formatContactForMessage(record.takeoverAmilName, record.takeoverAmilMobile)}`,
+    `Taking Imae Fatema / Azwaaj: ${formatContactForMessage(record.takeoverImaeFatemaName, record.takeoverImaeFatemaMobile)}`,
     `Musaedah: ${record.musaedahName || "To be confirmed"}`,
     `Google Meet Link: ${record.meetingLink || "To be shared"}`,
     "",
@@ -138,8 +237,10 @@ HOTO (Hand Over Take Over) has been scheduled for the following Mauze.
 
 Jamiat: ${record.jamiat}
 Jamaat / Mauze: ${record.jamaatMauze}
-Being Handed By Zawjat of (Amilsaheb/Masool al Mawaaze): ${record.handoverImaeFatemaName || record.handoverAmilName || "To be confirmed"}
-Being Taken By Zawjat of (Amilsaheb/Masool al Mawaaze): ${record.takeoverImaeFatemaName || record.takeoverAmilName || "To be confirmed"}
+Handing Amil / Masool: ${formatContactForMessage(record.handoverAmilName, record.handoverAmilMobile)}
+Handing Imae Fatema / Azwaaj: ${formatContactForMessage(record.handoverImaeFatemaName, record.handoverImaeFatemaMobile)}
+Taking Amil / Masool: ${formatContactForMessage(record.takeoverAmilName, record.takeoverAmilMobile)}
+Taking Imae Fatema / Azwaaj: ${formatContactForMessage(record.takeoverImaeFatemaName, record.takeoverImaeFatemaMobile)}
 Date: ${formatDate(record.scheduledDate)}
 Time: ${formatTimeRange(record)} (${record.timeZone})
 Meeting Link: ${record.meetingLink || "To be shared"}
@@ -158,8 +259,14 @@ function renderParticipantCards() {
     const haystack = [
       record.jamiat,
       record.jamaatMauze,
+      record.handoverAmilName,
+      record.handoverAmilMobile,
       record.handoverImaeFatemaName,
+      record.handoverImaeFatemaMobile,
+      record.takeoverAmilName,
+      record.takeoverAmilMobile,
       record.takeoverImaeFatemaName,
+      record.takeoverImaeFatemaMobile,
       record.musaedahName
     ].join(" ").toLowerCase();
     return !query || haystack.includes(query);
@@ -175,8 +282,10 @@ function renderParticipantCards() {
         <span class="badge ${record.status.toLowerCase()}">${escapeHtml(record.status)}</span>
       </div>
       <div class="meta-grid">
-        <p><span>Being Handed By Zawjat of</span>${escapeHtml(record.handoverImaeFatemaName || record.handoverAmilName)}</p>
-        <p><span>Being Taken By Zawjat of</span>${escapeHtml(record.takeoverImaeFatemaName || record.takeoverAmilName)}</p>
+        ${renderParticipantContact("Handing Amil / Masool", record.handoverAmilName, record.handoverAmilMobile, record)}
+        ${renderParticipantContact("Handing Imae Fatema / Azwaaj", record.handoverImaeFatemaName, record.handoverImaeFatemaMobile, record)}
+        ${renderParticipantContact("Taking Amil / Masool", record.takeoverAmilName, record.takeoverAmilMobile, record)}
+        ${renderParticipantContact("Taking Imae Fatema / Azwaaj", record.takeoverImaeFatemaName, record.takeoverImaeFatemaMobile, record)}
         <p><span>Musaedah</span>${escapeHtml(record.musaedahName)}</p>
         <p><span>Date</span>${formatDate(record.scheduledDate)}</p>
         <p><span>Time</span>${escapeHtml(formatTimeRange(record))}</p>

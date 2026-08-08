@@ -9,7 +9,8 @@ A simplified front-end module for HOTO scheduling using the Rayhanat design syst
 - Lets Musaedaat edit date, time, meeting link, status, instructions, and MOM notes.
 - Prevents overlapping meetings for the same Musaedah or same handover person.
 - Shows an Imae Fatema read-only schedule view.
-- Generates a default WhatsApp-ready message for each HOTO row.
+- Shows Amil/Masool and Imae Fatema/Azwaaj handover-takeover contacts with mobile numbers.
+- Generates a default WhatsApp-ready message for each HOTO row, including clickable mobile-number WhatsApp links.
 - Stores HOTO records in Teable through server-side Next.js API routes.
 
 ## Yearly Data

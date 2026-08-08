@@ -15,6 +15,10 @@ Use these exact field names:
 - Being Taken By Zawjat of
 - Handing Amil
 - Taking Amil
+- Handing Amil Mobile
+- Handing Imae Fatema Mobile
+- Taking Amil Mobile
+- Taking Imae Fatema Mobile
 - Musaedah
 - Date
 - Start Time
@@ -31,7 +35,7 @@ Use these exact field names:
 
 Recommended field types:
 
-- `App ID`, `Year`, names, links, instructions, remarks / MOM: text
+- `App ID`, `Year`, names, mobile numbers, links, instructions, remarks / MOM: text
 - `Sr. No.`: number
 - `Date`: date
 - `Status`: single select with `Draft`, `Scheduled`, `Completed`, `Cancelled`

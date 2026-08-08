@@ -142,21 +142,18 @@
           <section class="panel table-panel">
             <div class="table-toolbar">
               <span class="kicker">All Jamiats</span>
-              <span id="resultCount" class="muted"></span>
+              <span id="resultCount" class="muted result-count"></span>
             </div>
             <div class="table-wrap">
               <table class="schedule-table">
                 <thead>
                   <tr>
                     <th>Sr. No.</th>
-                    <th>Jamiat</th>
-                    <th>Jamaat / Mauze</th>
-                    <th>Being Handed By Zawjat of</th>
-                    <th>Being Taken By Zawjat of</th>
+                    <th>Mauze</th>
+                    <th>HOTO Contacts</th>
                     <th>Musaedah</th>
-                    <th>Date</th>
-                    <th>Time</th>
-                    <th>Google Meet Link</th>
+                    <th>Schedule</th>
+                    <th>MOM / Comments</th>
                     <th>Status</th>
                     <th>Actions</th>
                   </tr>
@@ -225,20 +222,36 @@
             <input id="mauzeInput" required />
           </label>
           <label class="field">
-            <span>Being Handed By Zawjat of</span>
-            <input id="handoverInput" required />
+            <span>Handing Amil / Masool</span>
+            <input id="handoverAmilInput" required />
           </label>
           <label class="field">
-            <span>Being Taken By Zawjat of</span>
-            <input id="takeoverInput" required />
+            <span>Handing Amil / Masool Mobile</span>
+            <input id="handoverAmilMobileInput" inputmode="tel" />
           </label>
           <label class="field">
-            <span>Handing Amil</span>
-            <input id="handoverAmilInput" />
+            <span>Handing Imae Fatema / Azwaaj</span>
+            <input id="handoverInput" />
           </label>
           <label class="field">
-            <span>Taking Amil</span>
-            <input id="takeoverAmilInput" />
+            <span>Handing Imae Fatema / Azwaaj Mobile</span>
+            <input id="handoverMobileInput" inputmode="tel" />
+          </label>
+          <label class="field">
+            <span>Taking Amil / Masool</span>
+            <input id="takeoverAmilInput" required />
+          </label>
+          <label class="field">
+            <span>Taking Amil / Masool Mobile</span>
+            <input id="takeoverAmilMobileInput" inputmode="tel" />
+          </label>
+          <label class="field">
+            <span>Taking Imae Fatema / Azwaaj</span>
+            <input id="takeoverInput" />
+          </label>
+          <label class="field">
+            <span>Taking Imae Fatema / Azwaaj Mobile</span>
+            <input id="takeoverMobileInput" inputmode="tel" />
           </label>
           <label class="field">
             <span>Musaedah</span>
@@ -317,6 +330,11 @@
             <span>Jamiat to Schedule</span>
             <select id="autoJamiatName" required></select>
           </label>
+          <label class="field wide">
+            <span>Google Meet Link for This Scope</span>
+            <input id="autoMeetingLink" inputmode="url" placeholder="https://meet.google.com/..." />
+          </label>
+          <p class="bulk-link-count wide" id="autoLinkScopeCount">Choose a Musaedah and Jamiat to apply a Meet link.</p>
           <label class="field">
             <span>Start Date</span>
             <input id="autoStartDate" type="date" required />
@@ -354,6 +372,7 @@
           </label>
         </div>
         <div class="drawer-actions">
+          <button class="btn btn-secondary" type="button" id="applyAutoMeetLink">Apply Link to This Scope</button>
           <button class="btn btn-secondary" type="button" id="previewAutoSchedule">Preview Count</button>
           <button class="btn btn-primary" type="submit">Schedule Draft Meetings</button>
         </div>
@@ -389,6 +408,7 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="hoto-data.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

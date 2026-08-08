@@ -453,22 +453,24 @@ h3 {
 }
 
 .table-wrap {
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: visible;
 }
 
 .schedule-table {
   width: 100%;
-  min-width: 1240px;
+  min-width: 0;
+  table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
 }
 
 .schedule-table th,
 .schedule-table td {
-  padding: 11px 12px;
+  padding: 10px 9px;
   text-align: left;
   border-bottom: 1px solid var(--border);
-  vertical-align: middle;
+  vertical-align: top;
 }
 
 .schedule-table th {
@@ -481,8 +483,41 @@ h3 {
   font-size: 11px;
   font-weight: 400;
   letter-spacing: 0.08em;
+  line-height: 1.35;
   text-transform: uppercase;
-  white-space: nowrap;
+  white-space: normal;
+}
+
+.schedule-table th:nth-child(1) {
+  width: 3%;
+}
+
+.schedule-table th:nth-child(2) {
+  width: 17%;
+}
+
+.schedule-table th:nth-child(3) {
+  width: 30%;
+}
+
+.schedule-table th:nth-child(4) {
+  width: 12%;
+}
+
+.schedule-table th:nth-child(5) {
+  width: 12%;
+}
+
+.schedule-table th:nth-child(6) {
+  width: 8%;
+}
+
+.schedule-table th:nth-child(7) {
+  width: 9%;
+}
+
+.schedule-table th:nth-child(8) {
+  width: 9%;
 }
 
 .schedule-table tbody tr:hover {
@@ -498,6 +533,114 @@ h3 {
   font-weight: 600;
 }
 
+.contact-cell {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.contact-cell strong {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.contact-phone {
+  width: fit-content;
+  color: var(--interactive);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.3;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+
+.contact-phone:hover {
+  color: var(--interactive-hover);
+}
+
+.contact-meta .contact-cell {
+  min-width: 0;
+}
+
+.hoto-contact-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.contact-group {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.contact-group-title {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.contact-meta {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  margin: 0;
+}
+
+.contact-meta > span {
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+.schedule-cell {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.schedule-cell strong {
+  font-weight: 600;
+}
+
+.schedule-cell small {
+  color: var(--text-secondary);
+}
+
+.comments-cell {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.comments-preview {
+  display: -webkit-box;
+  max-width: none;
+  margin: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.comments-empty {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.btn-compact {
+  width: fit-content;
+  min-height: 30px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
 .primary-cell small {
   color: var(--text-muted);
 }
@@ -510,7 +653,7 @@ h3 {
 }
 
 .link-pill {
-  max-width: 145px;
+  max-width: 100%;
   display: inline-block;
   overflow: hidden;
   color: var(--interactive);
@@ -552,11 +695,35 @@ h3 {
 }
 
 .status-select {
-  min-width: 136px;
-  padding: 7px 30px 7px 10px;
+  appearance: none;
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  padding: 8px 10px;
   border-radius: var(--radius-sm);
-  font-size: 12px;
+  border: 1px solid var(--border-control);
+  box-shadow: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
   line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.schedule-table .row-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+}
+
+.schedule-table .row-actions .btn {
+  min-height: 28px;
+  justify-content: flex-start;
+  padding: 4px 6px;
+  font-size: 12px;
+  line-height: 1.25;
+  text-align: left;
 }
 
 .status-select.scheduled {
@@ -572,6 +739,18 @@ h3 {
 .status-select.draft {
   color: var(--warning);
   background: var(--warning-subtle);
+}
+
+.result-count {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+}
+
+.bulk-link-count {
+  margin: 14px 0 0;
+  color: var(--text-secondary);
+  font-size: 13px;
 }
 
 .empty-state {
@@ -762,6 +941,10 @@ h3 {
   display: block;
   color: var(--text-muted);
   font-size: 11px;
+}
+
+.meta-grid p {
+  margin: 0;
 }
 
 .instructions {
@@ -1213,31 +1396,34 @@ h3 {
     font-size: 13px;
   }
 
-  .schedule-table td:nth-child(3) {
+  .schedule-table td:nth-child(2) {
     order: -2;
     grid-template-columns: 1fr;
     gap: 4px;
     padding: 0 0 12px;
   }
 
-  .schedule-table td:nth-child(1),
-  .schedule-table td:nth-child(2) {
+  .schedule-table td:nth-child(1) {
     order: -1;
   }
 
-  .schedule-table td:nth-child(3)::before {
+  .schedule-table td:nth-child(2)::before {
     display: none;
   }
 
-  .schedule-table td:nth-child(3) .primary-cell strong {
+  .schedule-table td:nth-child(2) .primary-cell strong {
     color: var(--text-primary);
     font-family: var(--font-display);
     font-size: 27px;
     line-height: 1.05;
   }
 
-  .schedule-table td:nth-child(3) .primary-cell small {
+  .schedule-table td:nth-child(2) .primary-cell small {
     font-size: 13px;
+  }
+
+  .hoto-contact-grid {
+    grid-template-columns: 1fr;
   }
 
   .schedule-table .serial-cell {
@@ -1248,6 +1434,18 @@ h3 {
     max-width: 100%;
     white-space: normal;
     overflow-wrap: anywhere;
+  }
+
+  .comments-cell {
+    min-width: 0;
+  }
+
+  .contact-cell {
+    min-width: 0;
+  }
+
+  .comments-preview {
+    max-width: none;
   }
 
   .status-select {

@@ -5,6 +5,17 @@ const ACTIVE_YEAR_STORAGE_KEY = "hoto-simple-active-year-v1";
 const SUPER_ADMIN_PASSCODE = "786";
 const ALL_MUSAEDAAT = "__ALL_MUSAEDAAT__";
 const DEFAULT_YEAR = "1448H";
+const SEED_CONTACT_FIELDS = [
+  "handoverAmilName",
+  "handoverAmilMobile",
+  "handoverImaeFatemaName",
+  "handoverImaeFatemaMobile",
+  "takeoverAmilName",
+  "takeoverAmilMobile",
+  "takeoverImaeFatemaName",
+  "takeoverImaeFatemaMobile"
+];
+const SEED_BACKFILL_FIELDS = ["jamiat", "jamaatMauze", "musaedahName", "timeZone", "sourceFileName"];
 
 let activeYear = loadActiveYear();
 let schedules = loadSchedules(activeYear);
@@ -53,7 +64,7 @@ async function hydrateFromServer() {
 
     const data = await apiRequest(`/api/schedules?year=${encodeURIComponent(activeYear)}`);
     if (Array.isArray(data.records) && data.records.length) {
-      schedules = data.records;
+      schedules = mergeSeedData(data.records, activeYear);
       localStorage.setItem(getScheduleStorageKey(activeYear), JSON.stringify(schedules));
       renderAll();
       showToast(`Loaded ${activeYear} from Teable.`);
@@ -106,8 +117,52 @@ function saveActiveYear(year) {
   localStorage.setItem(ACTIVE_YEAR_STORAGE_KEY, activeYear);
 }
 
+function getSeedSchedulesForYear(year) {
+  const seedYear = normalizeYear(window.HOTO_IMPORTED_META?.cycle || DEFAULT_YEAR);
+  const requestedYear = normalizeYear(year);
+  const seedRecords = Array.isArray(window.HOTO_IMPORTED_SCHEDULES) ? window.HOTO_IMPORTED_SCHEDULES : [];
+  if (!seedRecords.length || seedYear !== requestedYear) return [];
+  return seedRecords.map((record) => ({ ...record }));
+}
+
+function getRecordSeedKey(record) {
+  return String(record?.sourceSrNo || "").trim();
+}
+
+function getRecordPlaceKey(record) {
+  return `${normalize(record?.jamiat)}|${normalize(record?.jamaatMauze)}`;
+}
+
+function mergeSeedData(records, year) {
+  const seeds = getSeedSchedulesForYear(year);
+  if (!seeds.length || !Array.isArray(records)) return Array.isArray(records) ? records : [];
+  const seedsBySrNo = new Map(seeds.map((record) => [getRecordSeedKey(record), record]).filter(([key]) => key));
+  const seedsByPlace = new Map(seeds.map((record) => [getRecordPlaceKey(record), record]).filter(([key]) => key !== "|"));
+
+  return records.map((record) => {
+    const seed = seedsBySrNo.get(getRecordSeedKey(record)) || seedsByPlace.get(getRecordPlaceKey(record));
+    if (!seed) return record;
+    const merged = { ...record };
+    SEED_BACKFILL_FIELDS.forEach((field) => {
+      if (!merged[field] && seed[field]) merged[field] = seed[field];
+    });
+    SEED_CONTACT_FIELDS.forEach((field) => {
+      merged[field] = seed[field] || "";
+    });
+    return merged;
+  });
+}
+
+function repairStoredSchedules(year, records) {
+  const repaired = mergeSeedData(records, year);
+  if (JSON.stringify(repaired) !== JSON.stringify(records)) {
+    localStorage.setItem(getScheduleStorageKey(year), JSON.stringify(repaired));
+  }
+  return repaired;
+}
+
 function getDefaultSchedulesForYear(year) {
-  return [];
+  return getSeedSchedulesForYear(year);
 }
 
 function loadSchedules(year = activeYear) {
@@ -125,7 +180,7 @@ function loadSchedules(year = activeYear) {
   if (!stored) return getDefaultSchedulesForYear(normalizedYear);
   try {
     const parsed = JSON.parse(stored);
-    return Array.isArray(parsed) ? parsed : getDefaultSchedulesForYear(normalizedYear);
+    return Array.isArray(parsed) ? repairStoredSchedules(normalizedYear, parsed) : getDefaultSchedulesForYear(normalizedYear);
   } catch {
     return getDefaultSchedulesForYear(normalizedYear);
   }
@@ -178,6 +233,77 @@ function formatTimeRange(record) {
   return record.startTime || record.endTime;
 }
 
+function formatCommentsPreview(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  return text.length > 140 ? `${text.slice(0, 137)}...` : text;
+}
+
+function formatContactForMessage(name, mobile) {
+  const contactName = String(name || "").trim() || "To be confirmed";
+  const contactMobile = String(mobile || "").trim();
+  return contactMobile ? `${contactName} | Mobile: ${contactMobile}` : `${contactName} | Mobile: To be confirmed`;
+}
+
+function getWhatsAppNumber(mobile) {
+  const digits = String(mobile || "").replace(/\D/g, "");
+  if (!digits) return "";
+  return digits.length === 10 ? `91${digits}` : digits;
+}
+
+function buildWhatsAppUrlForMobile(mobile, record) {
+  const number = getWhatsAppNumber(mobile);
+  const target = number ? `/${number}` : "";
+  return `https://wa.me${target}?text=${encodeURIComponent(formatMessage(record))}`;
+}
+
+function renderContactCell(name, mobile, record) {
+  const contactName = String(name || "").trim();
+  const contactMobile = String(mobile || "").trim();
+  if (!contactName && !contactMobile) return `<span class="muted">To be confirmed</span>`;
+  const displayName = contactName || "Name pending";
+  const mobileMarkup = contactMobile
+    ? `<a class="contact-phone" href="${escapeAttribute(buildWhatsAppUrlForMobile(contactMobile, record))}" target="_blank" rel="noreferrer" aria-label="Message ${escapeAttribute(displayName)} on WhatsApp">${escapeHtml(contactMobile)}</a>`
+    : `<small class="muted">Mobile pending</small>`;
+  return `
+    <span class="contact-cell">
+      <strong>${escapeHtml(displayName)}</strong>
+      ${mobileMarkup}
+    </span>
+  `;
+}
+
+function renderParticipantContact(label, name, mobile, record) {
+  return `<p class="contact-meta"><span>${escapeHtml(label)}</span>${renderContactCell(name, mobile, record)}</p>`;
+}
+
+function renderContactGroup(record) {
+  return `
+    <div class="hoto-contact-grid">
+      <div class="contact-group">
+        <span class="contact-group-title">Handing</span>
+        ${renderParticipantContact("Amil / Masool", record.handoverAmilName, record.handoverAmilMobile, record)}
+        ${renderParticipantContact("Imae Fatema / Azwaaj", record.handoverImaeFatemaName, record.handoverImaeFatemaMobile, record)}
+      </div>
+      <div class="contact-group">
+        <span class="contact-group-title">Taking</span>
+        ${renderParticipantContact("Amil / Masool", record.takeoverAmilName, record.takeoverAmilMobile, record)}
+        ${renderParticipantContact("Imae Fatema / Azwaaj", record.takeoverImaeFatemaName, record.takeoverImaeFatemaMobile, record)}
+      </div>
+    </div>
+  `;
+}
+
+function renderScheduleCell(record) {
+  return `
+    <span class="schedule-cell">
+      <strong>${formatDate(record.scheduledDate)}</strong>
+      <small>${escapeHtml(formatTimeRange(record))}</small>
+      ${record.meetingLink ? `<a class="link-pill" href="${escapeAttribute(record.meetingLink)}" target="_blank" rel="noreferrer">Meet link</a>` : `<span class="muted">Link missing</span>`}
+    </span>
+  `;
+}
+
 function normalize(value) {
   return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
 }
@@ -200,21 +326,31 @@ function hasInvalidTimeWindow(record) {
 }
 
 function getHandoverPerson(record) {
-  return record.handoverImaeFatemaName || record.handoverAmilName || "";
+  return record.handoverAmilName || record.handoverImaeFatemaName || "";
 }
 
 function getTakeoverPerson(record) {
-  return record.takeoverImaeFatemaName || record.takeoverAmilName || "";
+  return record.takeoverAmilName || record.takeoverImaeFatemaName || "";
 }
 
 function getMeetingPeople(record) {
-  return [getHandoverPerson(record), getTakeoverPerson(record)]
+  return [
+    record.handoverAmilName,
+    record.handoverImaeFatemaName,
+    record.takeoverAmilName,
+    record.takeoverImaeFatemaName
+  ]
     .map(normalize)
     .filter(Boolean);
 }
 
 function getMeetingPersonName(record, normalizedPerson) {
-  return [getHandoverPerson(record), getTakeoverPerson(record)]
+  return [
+    record.handoverAmilName,
+    record.handoverImaeFatemaName,
+    record.takeoverAmilName,
+    record.takeoverImaeFatemaName
+  ]
     .find((person) => normalize(person) === normalizedPerson) || "This person";
 }
 
@@ -349,7 +485,7 @@ function findAutoSchedulePlan(config) {
 
 function getAutoScheduleConfig() {
   return {
-    musaedahName: $("autoMusaedahName").value === "All Musaedaat" ? ALL_MUSAEDAAT : $("autoMusaedahName").value,
+    musaedahName: getAutoScopeMusaedahName(),
     jamiatName: $("autoJamiatName").value,
     startDate: $("autoStartDate").value,
     endDate: $("autoEndDate").value,
@@ -372,8 +508,10 @@ function buildCalendarDetails(record) {
   return [
     `Jamiat: ${record.jamiat}`,
     `Jamaat / Mauze: ${record.jamaatMauze}`,
-    `Being Handed By Zawjat of: ${record.handoverImaeFatemaName || record.handoverAmilName || "To be confirmed"}`,
-    `Being Taken By Zawjat of: ${record.takeoverImaeFatemaName || record.takeoverAmilName || "To be confirmed"}`,
+    `Handing Amil / Masool: ${formatContactForMessage(record.handoverAmilName, record.handoverAmilMobile)}`,
+    `Handing Imae Fatema / Azwaaj: ${formatContactForMessage(record.handoverImaeFatemaName, record.handoverImaeFatemaMobile)}`,
+    `Taking Amil / Masool: ${formatContactForMessage(record.takeoverAmilName, record.takeoverAmilMobile)}`,
+    `Taking Imae Fatema / Azwaaj: ${formatContactForMessage(record.takeoverImaeFatemaName, record.takeoverImaeFatemaMobile)}`,
     `Musaedah: ${record.musaedahName || "To be confirmed"}`,
     `Google Meet Link: ${record.meetingLink || "To be shared"}`,
     "",
@@ -409,8 +547,10 @@ HOTO (Hand Over Take Over) has been scheduled for the following Mauze.
 
 Jamiat: ${record.jamiat}
 Jamaat / Mauze: ${record.jamaatMauze}
-Being Handed By Zawjat of (Amilsaheb/Masool al Mawaaze): ${record.handoverImaeFatemaName || record.handoverAmilName || "To be confirmed"}
-Being Taken By Zawjat of (Amilsaheb/Masool al Mawaaze): ${record.takeoverImaeFatemaName || record.takeoverAmilName || "To be confirmed"}
+Handing Amil / Masool: ${formatContactForMessage(record.handoverAmilName, record.handoverAmilMobile)}
+Handing Imae Fatema / Azwaaj: ${formatContactForMessage(record.handoverImaeFatemaName, record.handoverImaeFatemaMobile)}
+Taking Amil / Masool: ${formatContactForMessage(record.takeoverAmilName, record.takeoverAmilMobile)}
+Taking Imae Fatema / Azwaaj: ${formatContactForMessage(record.takeoverImaeFatemaName, record.takeoverImaeFatemaMobile)}
 Date: ${formatDate(record.scheduledDate)}
 Time: ${formatTimeRange(record)} (${record.timeZone})
 Meeting Link: ${record.meetingLink || "To be shared"}
@@ -554,19 +694,21 @@ function renderTable() {
   $("scheduleRows").innerHTML = rows.map((record, index) => `
     <tr>
       <td class="serial-cell" data-label="Sr. No.">${escapeHtml(record.sourceSrNo || index + 1)}</td>
-      <td data-label="Jamiat">${escapeHtml(record.jamiat)}</td>
-      <td data-label="Jamaat / Mauze">
+      <td data-label="Mauze">
         <span class="primary-cell">
           <strong>${escapeHtml(record.jamaatMauze)}</strong>
-          <small>${escapeHtml(record.timeZone)}</small>
+          <small>${escapeHtml(record.jamiat)} · ${escapeHtml(record.timeZone)}</small>
         </span>
       </td>
-      <td data-label="Handed By Zawjat of">${escapeHtml(record.handoverImaeFatemaName || record.handoverAmilName)}</td>
-      <td data-label="Taken By Zawjat of">${escapeHtml(record.takeoverImaeFatemaName || record.takeoverAmilName)}</td>
+      <td data-label="HOTO Contacts">${renderContactGroup(record)}</td>
       <td data-label="Musaedah">${escapeHtml(record.musaedahName)}</td>
-      <td data-label="Date">${formatDate(record.scheduledDate)}</td>
-      <td data-label="Time">${escapeHtml(formatTimeRange(record))}</td>
-      <td data-label="Google Meet Link">${record.meetingLink ? `<a class="link-pill" href="${escapeAttribute(record.meetingLink)}" target="_blank" rel="noreferrer">${escapeHtml(record.meetingLink)}</a>` : `<span class="muted">Missing</span>`}</td>
+      <td data-label="Schedule">${renderScheduleCell(record)}</td>
+      <td data-label="MOM / Comments">
+        <div class="comments-cell">
+          ${record.remarks ? `<p class="comments-preview">${escapeHtml(formatCommentsPreview(record.remarks))}</p>` : `<span class="comments-empty">No minutes added</span>`}
+          <button class="btn btn-ghost btn-compact" type="button" data-action="edit-comments" data-id="${record.id}">${record.remarks ? "Edit MOM" : "Add MOM"}</button>
+        </div>
+      </td>
       <td data-label="Status">
         <select class="status-select ${record.status.toLowerCase()}" data-action="change-status" data-id="${record.id}" aria-label="Change status for ${escapeAttribute(record.jamaatMauze)}">
           <option value="Draft" ${record.status === "Draft" ? "selected" : ""}>Not Scheduled</option>
@@ -594,8 +736,14 @@ function renderParticipantCards() {
     const haystack = [
       record.jamiat,
       record.jamaatMauze,
+      record.handoverAmilName,
+      record.handoverAmilMobile,
       record.handoverImaeFatemaName,
+      record.handoverImaeFatemaMobile,
+      record.takeoverAmilName,
+      record.takeoverAmilMobile,
       record.takeoverImaeFatemaName,
+      record.takeoverImaeFatemaMobile,
       record.musaedahName
     ].join(" ").toLowerCase();
     return !query || haystack.includes(query);
@@ -611,8 +759,10 @@ function renderParticipantCards() {
         <span class="badge ${record.status.toLowerCase()}">${escapeHtml(record.status)}</span>
       </div>
       <div class="meta-grid">
-        <p><span>Being Handed By Zawjat of</span>${escapeHtml(record.handoverImaeFatemaName || record.handoverAmilName)}</p>
-        <p><span>Being Taken By Zawjat of</span>${escapeHtml(record.takeoverImaeFatemaName || record.takeoverAmilName)}</p>
+        ${renderParticipantContact("Handing Amil / Masool", record.handoverAmilName, record.handoverAmilMobile, record)}
+        ${renderParticipantContact("Handing Imae Fatema / Azwaaj", record.handoverImaeFatemaName, record.handoverImaeFatemaMobile, record)}
+        ${renderParticipantContact("Taking Amil / Masool", record.takeoverAmilName, record.takeoverAmilMobile, record)}
+        ${renderParticipantContact("Taking Imae Fatema / Azwaaj", record.takeoverImaeFatemaName, record.takeoverImaeFatemaMobile, record)}
         <p><span>Date</span>${formatDate(record.scheduledDate)}</p>
         <p><span>Time</span>${escapeHtml(formatTimeRange(record))}</p>
       </div>
@@ -770,7 +920,14 @@ function clearMusaedahSchedule(musaedahName) {
   showToast(`Cleared ${affected.length} schedule(s) for ${musaedahName}.`);
 }
 
-function openDrawer(record) {
+function focusDrawerField(fieldId) {
+  const field = $(fieldId);
+  if (!field) return;
+  field.scrollIntoView({ behavior: "smooth", block: "center" });
+  field.focus();
+}
+
+function openDrawer(record, focusFieldId = "dateInput") {
   activeRecordId = record.id;
   $("drawerMode").textContent = record.id.startsWith("new-") ? "New HOTO" : "Edit Schedule";
   $("drawerTitle").textContent = record.id.startsWith("new-") ? "Add HOTO" : "Edit Schedule";
@@ -781,6 +938,10 @@ function openDrawer(record) {
   $("takeoverInput").value = record.takeoverImaeFatemaName;
   $("handoverAmilInput").value = record.handoverAmilName;
   $("takeoverAmilInput").value = record.takeoverAmilName;
+  $("handoverAmilMobileInput").value = record.handoverAmilMobile || "";
+  $("handoverMobileInput").value = record.handoverImaeFatemaMobile || "";
+  $("takeoverAmilMobileInput").value = record.takeoverAmilMobile || "";
+  $("takeoverMobileInput").value = record.takeoverImaeFatemaMobile || "";
   $("musaedahInput").value = record.musaedahName;
   $("dateInput").value = record.scheduledDate;
   $("startInput").value = record.startTime;
@@ -795,7 +956,7 @@ function openDrawer(record) {
   $("drawerBackdrop").hidden = false;
   $("editDrawer").classList.add("open");
   $("editDrawer").setAttribute("aria-hidden", "false");
-  $("dateInput").focus();
+  requestAnimationFrame(() => focusDrawerField(focusFieldId));
 }
 
 function closeDrawer() {
@@ -827,6 +988,7 @@ function openAutoScheduleDialog(musaedahName) {
   $("autoJamiatName").innerHTML = jamiats.map((jamiat) => `<option>${escapeHtml(jamiat)}</option>`).join("");
   $("autoJamiatName").value = jamiats.includes(currentJamiat) ? currentJamiat : jamiats[0];
   $("autoScheduleCopy").textContent = "This will schedule only the selected Musaedah and selected Jamiat. Other Jamiats will not be touched.";
+  $("autoMeetingLink").value = "";
   openAutoScheduleModal(today);
 }
 
@@ -838,12 +1000,62 @@ function openSuperAdminJamiatScheduleDialog() {
   $("autoJamiatName").innerHTML = jamiats.map((jamiat) => `<option>${escapeHtml(jamiat)}</option>`).join("");
   $("autoJamiatName").value = jamiats.includes(currentJamiat) ? currentJamiat : jamiats[0];
   $("autoScheduleCopy").textContent = "Super Admin mode: this will schedule Draft or unscheduled meetings for the selected Jamiat across all Musaedaat. Other Jamiats will not be touched.";
+  $("autoMeetingLink").value = "";
   openAutoScheduleModal(today);
+}
+
+function normalizeMeetingLink(value) {
+  const text = String(value || "").trim();
+  if (!text) return "";
+  return /^https?:\/\//i.test(text) ? text : `https://${text}`;
+}
+
+function isValidUrl(value) {
+  try {
+    return Boolean(new URL(value));
+  } catch {
+    return false;
+  }
+}
+
+function getAutoScopeMusaedahName() {
+  const value = $("autoMusaedahName").value;
+  return value === "All Musaedaat" ? ALL_MUSAEDAAT : value;
+}
+
+function getAutoMeetLinkTargets() {
+  const musaedahName = getAutoScopeMusaedahName();
+  const jamiatName = $("autoJamiatName").value;
+  if (!jamiatName || !musaedahName || musaedahName === ALL_MUSAEDAAT) return [];
+  return schedules.filter((record) => {
+    return record.status !== "Cancelled"
+      && normalize(record.jamiat) === normalize(jamiatName)
+      && normalize(record.musaedahName) === normalize(musaedahName);
+  });
+}
+
+function updateAutoMeetLinkScopeCount() {
+  const musaedahName = getAutoScopeMusaedahName();
+  const applyButton = $("applyAutoMeetLink");
+  const linkInput = $("autoMeetingLink");
+  if (musaedahName === ALL_MUSAEDAAT) {
+    $("autoLinkScopeCount").textContent = "Meet-link bulk update is available only from one Musaedah row.";
+    linkInput.value = "";
+    linkInput.disabled = true;
+    applyButton.disabled = true;
+    return;
+  }
+
+  linkInput.disabled = false;
+  const count = getAutoMeetLinkTargets().length;
+  $("autoLinkScopeCount").textContent = `${count} row${count === 1 ? "" : "s"} in this selected Jamiat + Musaedah scope will be updated. Existing meet links will be replaced.`;
+  applyButton.disabled = count === 0;
 }
 
 function openAutoScheduleModal(today) {
   $("autoStartDate").value = $("autoStartDate").value || today;
   $("autoEndDate").value = $("autoEndDate").value || addDays(today, 4);
+  updateAutoMeetLinkScopeCount();
   $("autoScheduleBackdrop").hidden = false;
   $("autoScheduleDialog").classList.add("open");
   $("autoScheduleDialog").setAttribute("aria-hidden", "false");
@@ -881,6 +1093,10 @@ function getRecordFromForm() {
     takeoverImaeFatemaName: $("takeoverInput").value.trim(),
     handoverAmilName: $("handoverAmilInput").value.trim(),
     takeoverAmilName: $("takeoverAmilInput").value.trim(),
+    handoverAmilMobile: $("handoverAmilMobileInput").value.trim(),
+    handoverImaeFatemaMobile: $("handoverMobileInput").value.trim(),
+    takeoverAmilMobile: $("takeoverAmilMobileInput").value.trim(),
+    takeoverImaeFatemaMobile: $("takeoverMobileInput").value.trim(),
     musaedahName: $("musaedahInput").value.trim(),
     scheduledDate: $("dateInput").value,
     startTime: $("startInput").value,
@@ -932,44 +1148,119 @@ function parseImportedTime(value) {
   return match ? `${match[1].padStart(2, "0")}:${match[2]}` : "";
 }
 
+function isLikelyHeaderRow(row) {
+  const headers = row.map(normalizeHeader);
+  const hasSerial = headers.some((header) => ["srno", "serial", "serialnumber", "no"].includes(header));
+  const hasMauze = headers.some((header) => ["jamaatmauze", "jamaat", "mauze"].includes(header));
+  const hasJamiat = headers.includes("jamiat");
+  return hasSerial && hasMauze && hasJamiat;
+}
+
+function sheetToImportedRows(sheet) {
+  const matrix = window.XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+  const headerIndex = matrix.findIndex((row) => isLikelyHeaderRow(row));
+  if (headerIndex < 0) return window.XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+  const headers = matrix[headerIndex].map((header, index) => String(header || "").trim() || `Column ${index + 1}`);
+  return matrix.slice(headerIndex + 1)
+    .map((row) => Object.fromEntries(headers.map((header, index) => [header, row[index] ?? ""])))
+    .filter((row) => Object.values(row).some((value) => String(value || "").trim()));
+}
+
 function mapImportedRow(row, index, year, importedAt, sourceName) {
   const sourceSrNo = getRowValue(row, ["Sr. No.", "Sr No", "Serial", "Serial Number", "No"]);
   const jamiat = getRowValue(row, ["Jamiat"]);
   const jamaatMauze = getRowValue(row, ["Jamaat / Mauze", "Jamaat/Mauze", "Jamaat", "Mauze", "Jamaat Mauze"]);
-  const handover = getRowValue(row, [
+  const handoverAmil = getRowValue(row, [
     "Being Handed By",
-    "Being Handed By Zawjat of",
     "Handed By",
+    "Handing Amil",
+    "Handing Amil / Masool",
+    "Handover Amil",
+    "Handed By Amil",
+    "Amilsaheb Handed By",
+    "Masool al Moze Handed By"
+  ]);
+  const handoverAmilMobile = getRowValue(row, [
+    "Handed By Mobile Number",
+    "Handing Amil Mobile",
+    "Handing Amil Mobile Number",
+    "Handover Amil Mobile",
+    "Handover Mobile",
+    "Amilsaheb Handed By Mobile"
+  ]);
+  const handoverImaeFatema = getRowValue(row, [
+    "Handed By Imae Fatema Name",
     "Handing Imae Fatema",
     "Handover Imae Fatema",
-    "Handing Amil"
+    "Handing Imae Fatema / Azwaaj",
+    "Being Handed By Zawjat of",
+    "Handing Azwaaj",
+    "Handover Azwaaj"
   ]);
-  const takeover = getRowValue(row, [
+  const handoverImaeFatemaMobile = getRowValue(row, [
+    "Handed By Imae Fatema Mobile Number",
+    "Handing Imae Fatema Mobile",
+    "Handing Imae Fatema Mobile Number",
+    "Handover Imae Fatema Mobile",
+    "Handing Azwaaj Mobile"
+  ]);
+  const takeoverAmil = getRowValue(row, [
     "Being Taken By",
-    "Being Taken By Zawjat of",
     "Taken By",
+    "Taking Amil",
+    "Taking Amil / Masool",
+    "Takeover Amil",
+    "Taken By Amil",
+    "Amilsaheb Taken By",
+    "Masool al Moze Taken By"
+  ]);
+  const takeoverAmilMobile = getRowValue(row, [
+    "Taken By Mobile Number",
+    "Taking Amil Mobile",
+    "Taking Amil Mobile Number",
+    "Takeover Amil Mobile",
+    "Takeover Mobile",
+    "Amilsaheb Taken By Mobile"
+  ]);
+  const takeoverImaeFatema = getRowValue(row, [
+    "Taken By Imae Fatema Name",
     "Taking Imae Fatema",
     "Takeover Imae Fatema",
-    "Taking Amil"
+    "Taking Imae Fatema / Azwaaj",
+    "Being Taken By Zawjat of",
+    "Taking Azwaaj",
+    "Takeover Azwaaj"
   ]);
-  const musaedah = getRowValue(row, ["Musaedah", "Musaeda", "Musaedah DA", "Musaeda DA"]);
+  const takeoverImaeFatemaMobile = getRowValue(row, [
+    "Taken By Imae Fatema Mobile Number",
+    "Taking Imae Fatema Mobile",
+    "Taking Imae Fatema Mobile Number",
+    "Takeover Imae Fatema Mobile",
+    "Taking Azwaaj Mobile"
+  ]);
+  const musaedah = getRowValue(row, ["Musaedah", "Musaeda", "Musaedah DA", "Musaeda DA", "Jamiat Musaeda"]);
   const scheduledDate = parseImportedDate(row.Date || row.date || getRowValue(row, ["Date", "Schedule Date", "Scheduled Date"]));
   const startTime = parseImportedTime(row["Start Time"] || row.startTime || getRowValue(row, ["Start Time", "Time Start"]));
   const endTime = parseImportedTime(row["End Time"] || row.endTime || getRowValue(row, ["End Time", "Time End"]));
   const meetingLink = getRowValue(row, ["Google Meet Link", "Meeting Link", "Meet Link", "Link"]);
   const status = getRowValue(row, ["Status"]) || (scheduledDate && startTime && endTime ? "Scheduled" : "Draft");
 
-  if (!jamiat && !jamaatMauze && !handover && !takeover && !musaedah) return null;
+  if (!jamiat && !jamaatMauze && !handoverAmil && !handoverImaeFatema && !takeoverAmil && !takeoverImaeFatema && !musaedah) return null;
 
   return {
     id: `hoto-${normalizeYear(year).toLowerCase()}-${String(index + 1).padStart(3, "0")}`,
     sourceSrNo: Number(sourceSrNo) || index + 1,
     jamiat,
     jamaatMauze,
-    handoverImaeFatemaName: handover,
-    takeoverImaeFatemaName: takeover,
-    handoverAmilName: handover,
-    takeoverAmilName: takeover,
+    handoverImaeFatemaName: handoverImaeFatema,
+    takeoverImaeFatemaName: takeoverImaeFatema,
+    handoverAmilName: handoverAmil,
+    takeoverAmilName: takeoverAmil,
+    handoverAmilMobile,
+    handoverImaeFatemaMobile,
+    takeoverAmilMobile,
+    takeoverImaeFatemaMobile,
     musaedahName: musaedah,
     scheduledDate,
     startTime,
@@ -991,7 +1282,7 @@ async function importYearFromFile(year, file) {
   const buffer = await file.arrayBuffer();
   const workbook = window.XLSX.read(buffer, { type: "array", cellDates: false });
   const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-  const rows = window.XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
+  const rows = sheetToImportedRows(firstSheet);
   const importedAt = new Date().toISOString();
   const records = rows
     .map((row, index) => mapImportedRow(row, index, year, importedAt, file.name))
@@ -1147,6 +1438,7 @@ document.addEventListener("click", (event) => {
   if (!record) return;
 
   if (actionButton.dataset.action === "edit") openDrawer(record);
+  if (actionButton.dataset.action === "edit-comments") openDrawer(record, "remarksInput");
   if (actionButton.dataset.action === "clear-row-schedule") clearSingleSchedule(record.id);
   if (actionButton.dataset.action === "calendar") openGoogleCalendar(record);
   if (actionButton.dataset.action === "copy") copyMessage(record);
@@ -1204,7 +1496,7 @@ $("yearSelect").addEventListener("change", async () => {
     try {
       const data = await apiRequest(`/api/schedules?year=${encodeURIComponent(activeYear)}`);
       if (Array.isArray(data.records)) {
-        schedules = data.records.length ? data.records : getDefaultSchedulesForYear(activeYear);
+        schedules = data.records.length ? mergeSeedData(data.records, activeYear) : getDefaultSchedulesForYear(activeYear);
         localStorage.setItem(getScheduleStorageKey(activeYear), JSON.stringify(schedules));
         renderAll();
       }
@@ -1225,6 +1517,10 @@ $("newRowBtn").addEventListener("click", () => {
     takeoverImaeFatemaName: "",
     handoverAmilName: "",
     takeoverAmilName: "",
+    handoverAmilMobile: "",
+    handoverImaeFatemaMobile: "",
+    takeoverAmilMobile: "",
+    takeoverImaeFatemaMobile: "",
     musaedahName: "",
     scheduledDate: new Date().toISOString().slice(0, 10),
     startTime: "10:00",
@@ -1257,6 +1553,42 @@ $("unlockSuperAdmin").addEventListener("click", () => {
 
 $("openImportYear").addEventListener("click", openImportYearDialog);
 $("scheduleJamiatSuperAdmin").addEventListener("click", openSuperAdminJamiatScheduleDialog);
+
+$("autoJamiatName").addEventListener("change", updateAutoMeetLinkScopeCount);
+$("autoMeetingLink").addEventListener("input", updateAutoMeetLinkScopeCount);
+$("applyAutoMeetLink").addEventListener("click", () => {
+  const link = normalizeMeetingLink($("autoMeetingLink").value);
+  if (!link) {
+    showToast("Paste the Google Meet link first.");
+    return;
+  }
+  if (!isValidUrl(link)) {
+    showToast("Paste a valid Google Meet link.");
+    return;
+  }
+
+  const targets = getAutoMeetLinkTargets();
+  if (!targets.length) {
+    showToast("Open Auto Schedule from a specific Musaedah row, then choose one Jamiat.");
+    return;
+  }
+
+  const targetIds = new Set(targets.map((record) => record.id));
+  schedules = schedules.map((record) => {
+    if (!targetIds.has(record.id)) return record;
+    return {
+      ...record,
+      meetingLink: link,
+      lastUpdatedBy: "Auto Schedule Meet Link",
+      lastUpdatedAt: new Date().toISOString()
+    };
+  });
+
+  saveSchedules();
+  renderAll();
+  updateAutoMeetLinkScopeCount();
+  showToast(`Applied meet link to ${targets.length} HOTO row${targets.length === 1 ? "" : "s"}.`);
+});
 
 $("importYearForm").addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -1327,9 +1659,14 @@ $("previewAutoSchedule").addEventListener("click", () => {
 $("autoScheduleForm").addEventListener("submit", (event) => {
   event.preventDefault();
   const config = getAutoScheduleConfig();
+  const meetingLink = normalizeMeetingLink($("autoMeetingLink").value);
   const error = validateAutoScheduleConfig(config);
   if (error) {
     showToast(error);
+    return;
+  }
+  if (meetingLink && !isValidUrl(meetingLink)) {
+    showToast("Paste a valid Google Meet link.");
     return;
   }
   const plan = findAutoSchedulePlan(config);
@@ -1347,6 +1684,7 @@ $("autoScheduleForm").addEventListener("submit", (event) => {
       scheduledDate: planned.scheduledDate,
       startTime: planned.startTime,
       endTime: planned.endTime,
+      meetingLink: meetingLink || record.meetingLink,
       status: "Scheduled",
       lastUpdatedBy: "Auto Schedule",
       lastUpdatedAt: new Date().toISOString()
